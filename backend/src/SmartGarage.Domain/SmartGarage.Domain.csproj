@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Entities, enums, constants, the appointment state machine and domain exceptions.
+
+    One package reference, and only one. Microsoft.Extensions.Identity.Stores carries the
+    IdentityUser<TKey> and IdentityRole<TKey> base types that ApplicationUser and
+    ApplicationRole extend. It is the Identity *model*, not the web stack: it brings no
+    EF Core, no DbContext, no ASP.NET Core hosting.
+
+    The alternative would be to move ApplicationUser out of Domain, but every entity here
+    has a navigation to it - a vehicle has an owner, an appointment has a customer, a
+    review has an author - so the person is unavoidably a domain concept. Pushing it into
+    Infrastructure would invert the dependency and force Domain to reference Infrastructure.
+
+    The rule this project actually holds to is that Domain knows nothing about persistence:
+    no EF attributes, no DbContext, no connection strings. That rule is intact.
+  -->
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Identity.Stores" Version="9.0.0" />
+  </ItemGroup>
+
+</Project>

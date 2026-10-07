@@ -1,0 +1,66 @@
+# ---- Tajne: NIKADA u repozitorij ni u GitHub Release ----
+.env
+*.env
+!.env.example
+.env-tajne.zip
+
+# ---- Lokalne razvojne biljeske i alati: nisu dio rada ----
+CLAUDE.md
+.claude/
+
+# ---- .NET ----
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+*.user
+*.suo
+*.userprefs
+.vs/
+.vscode/
+*.dbmdl
+*.log
+logs/
+TestResults/
+[Tt]est[Rr]esult*/
+artifacts/
+*.nupkg
+project.lock.json
+.idea/
+
+# ---- Flutter / Dart ----
+.dart_tool/
+.packages
+.pub-cache/
+.pub/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+*.iml
+**/ios/Flutter/.last_build_id
+**/android/.gradle/
+**/android/local.properties
+**/android/key.properties
+**/android/app/debug/
+**/android/app/profile/
+**/android/app/release/
+**/windows/flutter/ephemeral/
+*.jks
+*.keystore
+
+# ---- Build izlazi: idu SAMO u GitHub Release, ne u git historiju ----
+*.apk
+*.aab
+*.exe
+*.msix
+fit-build-*.zip
+
+# ---- OS ----
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---- Radna dokumentacija: nije dio predaje ----
+docs/

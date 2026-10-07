@@ -1,0 +1,168 @@
+# =============================================================================
+#  SmartGarage - stil koda
+#
+#  Ova datoteka postoji zato sto je u Directory.Build.props ukljucen
+#  EnforceCodeStyleInBuild. Bez nje analizator primjenjuje Microsoftove zadane
+#  preference, koje se razlikuju od stila kojim je projekat pisan.
+#
+#  Filozofija podjele ozbiljnosti:
+#    - Kozmeticke preference (razmaci, raspored zagrada, oblik tijela metode)
+#      su SUGESTIJE. Nikada ne smiju srusiti build.
+#    - Pravila koja odgovaraju ocjenjivanim zahtjevima (neiskorisceni using-ovi,
+#      mrtav kod, zabranjeni API-ji) su UPOZORENJA, a upozorenja su greske.
+# =============================================================================
+
+root = true
+
+[*]
+indent_style = space
+charset = utf-8
+trim_trailing_whitespace = true
+insert_final_newline = true
+
+[*.{yml,yaml,json,xml,csproj,props,targets,sln}]
+indent_size = 2
+
+[*.md]
+trim_trailing_whitespace = false
+
+[*.dart]
+indent_size = 2
+
+[*.cs]
+indent_size = 4
+end_of_line = crlf
+
+# ---------------------------------------------------------------------------
+#  Ozbiljnost: sve stilske preference su sugestije po defaultu
+# ---------------------------------------------------------------------------
+dotnet_analyzer_diagnostic.category-Style.severity = suggestion
+
+# ...osim ovih, koje direktno odgovaraju ocjenjivanim zahtjevima
+# ("bez neiskoristenog koda, bez mrtvog koda, bez zaostataka iz template-a").
+dotnet_diagnostic.IDE0005.severity = warning
+
+# Zabranjeni API-ji (.Result, .Wait(), Thread.Sleep, System.Random, DateTime.Now,
+# Console.WriteLine) su greska pri buildu. Spisak je u BannedSymbols.txt.
+dotnet_diagnostic.RS0030.severity = error
+
+# Imenovanje je stilska preferenca, ne ispravnost. Nikada ne smije srusiti build.
+dotnet_diagnostic.IDE1006.severity = suggestion
+
+# Isto vrijedi za formatiranje: razmaci i poravnanja ne smiju zaustaviti build.
+# Ko zeli poravnati cijeli projekat, pokrene "dotnet format".
+dotnet_diagnostic.IDE0055.severity = suggestion
+
+# ---------------------------------------------------------------------------
+#  Namespace i tijela clanova - stil kojim je projekat stvarno pisan
+# ---------------------------------------------------------------------------
+csharp_style_namespace_declarations = file_scoped:suggestion
+
+csharp_style_expression_bodied_methods = true:suggestion
+csharp_style_expression_bodied_constructors = false:suggestion
+csharp_style_expression_bodied_operators = true:suggestion
+csharp_style_expression_bodied_properties = true:suggestion
+csharp_style_expression_bodied_indexers = true:suggestion
+csharp_style_expression_bodied_accessors = true:suggestion
+csharp_style_expression_bodied_lambdas = true:suggestion
+csharp_style_expression_bodied_local_functions = true:suggestion
+
+# ---------------------------------------------------------------------------
+#  using direktive
+# ---------------------------------------------------------------------------
+csharp_using_directive_placement = outside_namespace:suggestion
+dotnet_sort_system_directives_first = true
+dotnet_separate_import_directive_groups = false
+
+# ---------------------------------------------------------------------------
+#  Moderni C# koji zelimo vidjeti
+# ---------------------------------------------------------------------------
+csharp_style_var_for_built_in_types = false:suggestion
+csharp_style_var_when_type_is_apparent = true:suggestion
+csharp_style_var_elsewhere = false:suggestion
+
+csharp_prefer_braces = true:suggestion
+csharp_style_prefer_switch_expression = true:suggestion
+csharp_style_prefer_pattern_matching = true:suggestion
+csharp_style_prefer_not_pattern = true:suggestion
+csharp_style_prefer_null_check_over_type_check = true:suggestion
+csharp_style_throw_expression = true:suggestion
+csharp_style_prefer_primary_constructors = true:suggestion
+csharp_style_prefer_collection_expression = true:suggestion
+csharp_prefer_simple_using_statement = true:suggestion
+csharp_style_prefer_readonly_struct = true:suggestion
+
+dotnet_style_object_initializer = true:suggestion
+dotnet_style_collection_initializer = true:suggestion
+dotnet_style_prefer_auto_properties = true:suggestion
+dotnet_style_null_propagation = true:suggestion
+dotnet_style_coalesce_expression = true:suggestion
+dotnet_style_readonly_field = true:suggestion
+dotnet_style_require_accessibility_modifiers = for_non_interface_members:suggestion
+
+# ---------------------------------------------------------------------------
+#  Imenovanje
+# ---------------------------------------------------------------------------
+dotnet_naming_rule.interfaces_start_with_i.severity = suggestion
+dotnet_naming_rule.interfaces_start_with_i.symbols = interface_symbols
+dotnet_naming_rule.interfaces_start_with_i.style = prefix_with_i
+dotnet_naming_symbols.interface_symbols.applicable_kinds = interface
+dotnet_naming_style.prefix_with_i.required_prefix = I
+dotnet_naming_style.prefix_with_i.capitalization = pascal_case
+
+# Konstante su PascalCase. Ovo pravilo MORA doci prije pravila za privatna polja,
+# jer je const takoder polje, pa bi inace trazio "_" prefiks.
+dotnet_naming_rule.constants_are_pascal_case.severity = suggestion
+dotnet_naming_rule.constants_are_pascal_case.symbols = constant_symbols
+dotnet_naming_rule.constants_are_pascal_case.style = pascal_case_style
+dotnet_naming_symbols.constant_symbols.applicable_kinds = field, local
+dotnet_naming_symbols.constant_symbols.required_modifiers = const
+dotnet_naming_style.pascal_case_style.capitalization = pascal_case
+
+dotnet_naming_rule.private_fields_are_camel_case_with_underscore.severity = suggestion
+dotnet_naming_rule.private_fields_are_camel_case_with_underscore.symbols = private_field_symbols
+dotnet_naming_rule.private_fields_are_camel_case_with_underscore.style = underscore_camel_case
+dotnet_naming_symbols.private_field_symbols.applicable_kinds = field
+dotnet_naming_symbols.private_field_symbols.applicable_accessibilities = private
+dotnet_naming_style.underscore_camel_case.required_prefix = _
+dotnet_naming_style.underscore_camel_case.capitalization = camel_case
+
+# ---------------------------------------------------------------------------
+#  Izuzeci po datoteci
+# ---------------------------------------------------------------------------
+
+# Program.cs koristi top-level statements, pa generisana Program klasa
+# nuzno zivi izvan namespace-a. CA1050 tu nije primjenjiv.
+[**/Program.cs]
+dotnet_diagnostic.CA1050.severity = none
+
+# Testovi: javni test razredi ne trebaju XML dokumentaciju ni stroga CA pravila
+# namijenjena bibliotekama.
+[backend/tests/**/*.cs]
+dotnet_diagnostic.CA1707.severity = none
+dotnet_diagnostic.CA1515.severity = none
+
+# ---------------------------------------------------------------------------
+#  EF migracije: generisani kod
+# ---------------------------------------------------------------------------
+# Fajlove u Migrations pise "dotnet ef", ne mi. Njegov stil se ne poklapa sa
+# nasim pravilima: koristi starije oblike inicijalizacije kolekcija, ostavlja
+# using-ove koje ne koristi, i prosljeduje nizove konstanti u pozive.
+#
+# Nema smisla to ispravljati rucno - svaka naredna migracija bi vratila isto
+# stanje, a izmjena generisanog fajla je i inace losa praksa jer opis seme mora
+# odgovarati onome sto je EF stvarno proizveo.
+#
+# generated_code = true je nacin na koji Roslyn-u kazemo da je rijec o
+# generisanom kodu, cime stilska i kvalitativna pravila prestaju vrijediti za
+# ove fajlove. Eksplicitne ozbiljnosti ispod su osiguranje, da ne zavisimo samo
+# od te jedne postavke.
+[**/Migrations/*.cs]
+generated_code = true
+dotnet_diagnostic.IDE0005.severity = none
+dotnet_diagnostic.IDE0300.severity = none
+dotnet_diagnostic.IDE0301.severity = none
+dotnet_diagnostic.IDE0303.severity = none
+dotnet_diagnostic.IDE0028.severity = none
+dotnet_diagnostic.CA1861.severity = none
+dotnet_diagnostic.CA1825.severity = none

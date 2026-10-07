@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\SmartGarage.Application\SmartGarage.Application.csproj" />
+  </ItemGroup>
+
+  <!--
+    Migracije pise "dotnet ef". Njegov stil nije nas stil, a rucno ispravljanje
+    generisanog fajla je besmisleno jer ga sljedeca migracija vrati u isto stanje.
+    Oznacavanje kao generisani kod iskljucuje stilske i kvalitativne analizatore
+    nad tim fajlovima, dok greske kompajlera i dalje vrijede.
+  -->
+  <ItemGroup>
+    <Compile Update="Migrations\**\*.cs">
+      <ExcludeFromStyleCop>true</ExcludeFromStyleCop>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="9.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="9.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.0" />
+    <!-- Raw RabbitMQ client v7: async-native consumer API (AsyncEventingBasicConsumer),
+         as required by Appendix A.1 of the course instructions. -->
+    <PackageReference Include="RabbitMQ.Client" Version="7.0.0" />
+    <!-- 4.16.0 is the first release that fixes the STARTTLS response-injection advisory
+         GHSA-9j88-vvj5-vhgr, and it brings MimeKit past the CRLF-injection advisory
+         GHSA-g7hc-96xr-gvvx (fixed in 4.15.1). Do not downgrade. -->
+    <PackageReference Include="MailKit" Version="4.16.0" />
+    <PackageReference Include="Stripe.net" Version="45.0.0" />
+    <PackageReference Include="QuestPDF" Version="2024.3.0" />
+    <!-- Security pin, not a direct dependency: something below us resolves
+         Newtonsoft.Json 12.0.3, which carries GHSA-5crp-9r3c-p9vr (high severity).
+         A direct reference wins over the transitive one. Fixed in 13.0.1. -->
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
+</Project>

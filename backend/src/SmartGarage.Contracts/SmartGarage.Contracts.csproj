@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Message contracts shared by the API (publisher) and the Worker (consumer).
+       A leaf project on purpose - it references nothing, so neither host can leak
+       implementation types into the other through it. -->
+</Project>

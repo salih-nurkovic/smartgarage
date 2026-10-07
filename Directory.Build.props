@@ -1,0 +1,89 @@
+<Project>
+
+  <!--
+    Shared build settings for every project in the solution.
+    These exist to make several of the graded requirements impossible to violate by accident
+    rather than merely discouraged by convention.
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <LangVersion>13.0</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+
+    <!-- "No unused code, no dead code, no template leftovers" is graded.
+         Warnings as errors stops those from accumulating silently. -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <!-- IDE0005 (neiskorisceni using-ovi) radi pri buildu SAMO ako je ovo true.
+         To je ocjenjivani zahtjev, pa je ukljuceno, a CS1591 (nedostaje XML komentar
+         za javni clan) se gasi jer ne pisemo javnu biblioteku. -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+
+    <!-- CA1515: "make type internal" fires on public controllers/DTOs. Not applicable here.
+         CS1591: missing XML comment on a public member - we are not shipping a library.
+         The generated documentation file exists only so IDE0005 can run during the build. -->
+    <NoWarn>$(NoWarn);CA1515;CS1591;CA1014;CA1848</NoWarn>
+
+    <!-- Zasto su CA1014 i CA1848 ugaseni, a ne "popravljeni":
+           CA1014 (oznaci assembly sa CLSCompliant) je pravilo za javne biblioteke
+           koje koriste i drugi .NET jezici. Ovo je aplikacija, ne biblioteka.
+           CA1848 (koristi LoggerMessage delegate) je optimizacija za vruce putanje
+           sa milionima poziva. Nasi logovi su dogadaji poslovnog toka, a citljivost
+           strukturiranog loga ovdje vrijedi vise od mikrooptimizacije. -->
+
+    <!-- Vulnerability auditing stays ON: we want to SEE advisories.
+         But audit data is fetched live from nuget.org, so a brand-new advisory could
+         break the build on the evaluator's machine months from now. The course
+         instructions require the project to run without any modification, so audit
+         findings are reported as warnings and never fail the build. Known advisories
+         are still fixed properly, by upgrading the package. -->
+    <NuGetAudit>true</NuGetAudit>
+    <NuGetAuditMode>direct</NuGetAuditMode>
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);NU1900;NU1901;NU1902;NU1903;NU1904</WarningsNotAsErrors>
+
+    <!-- Kalibracija ozbiljnosti:
+           - CS upozorenja kompajlera (neiskorisctene varijable, nullability) ostaju GRESKE.
+             To su stvarni defekti i direktno odgovaraju ocjenjivanom "bez mrtvog koda".
+           - CA pravila analizatora ostaju VIDLJIVA kao upozorenja, ali ne ruse build.
+             Ima ih na stotine, mijenjaju se izmedu verzija SDK-a, i veliki dio su
+             preporuke za biblioteke koje se na ovaj projekat ne odnose. Uz rok koji
+             imamo, zaustavljanje builda zbog njih kosta vise nego sto donosi.
+           - Zabranjeni API-ji (RS0030) i neiskorisceni using-ovi (IDE0005) ostaju GRESKE,
+             jer su to izricito ocjenjivani zahtjevi. -->
+    <CodeAnalysisTreatWarningsAsErrors>false</CodeAnalysisTreatWarningsAsErrors>
+
+    <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+    <InvariantGlobalization>false</InvariantGlobalization>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      Hard enforcement of the performance rules from the course instructions, section 8.2:
+      no .Result, no .Wait(), no .GetAwaiter().GetResult(), no Thread.Sleep.
+      These become build ERRORS, not review comments.
+    -->
+    <PackageReference Include="Microsoft.CodeAnalysis.BannedApiAnalyzers" Version="3.3.4">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <AdditionalFiles Include="$(MSBuildThisFileDirectory)BannedSymbols.txt" />
+  </ItemGroup>
+
+  <!--
+    Ozbiljnost RS0030 (zabranjeni API-ji) namjerno NIJE ovdje.
+
+    WarningsAsErrors je MSBuild postavka koja nadjacava .editorconfig, pa bi
+    pravilo bilo greska u svakom fajlu bez izuzetka. Zabrana nam treba stroga
+    u kodu koji dira sigurnost, ali ne i u seederima, gdje je Random sa fiksnim
+    sjemenom ispravan izbor.
+
+    Zato se ozbiljnost postavlja u .editorconfig, koji jedini zna za putanje.
+  -->
+
+</Project>

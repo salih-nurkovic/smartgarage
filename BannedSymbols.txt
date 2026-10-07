@@ -1,0 +1,28 @@
+; Banned APIs — enforced at build time as errors (RS0030).
+; These correspond directly to the course instructions, section 8.2:
+;   "Obavezan je async/await kroz cijeli stack. Nije dozvoljeno koristiti
+;    .GetAwaiter().GetResult(), .Wait() ili .Result. Thread.Sleep treba
+;    zamijeniti sa await Task.Delay."
+
+M:System.Threading.Tasks.Task.Wait(); Use await instead. Blocking on a Task is banned by the course instructions.
+M:System.Threading.Tasks.Task.Wait(System.Int32); Use await instead.
+M:System.Threading.Tasks.Task.Wait(System.TimeSpan); Use await instead.
+M:System.Threading.Tasks.Task.Wait(System.Threading.CancellationToken); Use await instead.
+P:System.Threading.Tasks.Task`1.Result; Use await instead. Blocking on a Task is banned by the course instructions.
+M:System.Threading.Thread.Sleep(System.Int32); Use await Task.Delay instead.
+M:System.Threading.Thread.Sleep(System.TimeSpan); Use await Task.Delay instead.
+M:System.Runtime.CompilerServices.TaskAwaiter`1.GetResult(); Use await instead.
+M:System.Runtime.CompilerServices.TaskAwaiter.GetResult(); Use await instead.
+
+; Appendix A.3: security values must come from a cryptographic RNG, never System.Random.
+T:System.Random; Use System.Security.Cryptography.RandomNumberGenerator for codes, tokens and any security value.
+
+; Appendix A.4: timestamps must be UTC everywhere. Mixing DateTime.Now and DateTime.UtcNow
+; is explicitly called out as a defect. Use IDateTimeProvider.UtcNow in application code.
+P:System.DateTime.Now; Use DateTime.UtcNow (or IDateTimeProvider.UtcNow). The instructions require UTC everywhere.
+P:System.DateTime.Today; Use DateTime.UtcNow.Date.
+
+; Section 8.1: use ILogger<T>, never Console.WriteLine.
+M:System.Console.WriteLine; Use ILogger<T> instead.
+M:System.Console.WriteLine(System.String); Use ILogger<T> instead.
+M:System.Console.Write(System.String); Use ILogger<T> instead.
