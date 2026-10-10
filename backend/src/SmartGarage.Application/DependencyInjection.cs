@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using FluentValidation;
 using Microsoft.Extensions.Configuration;
@@ -55,6 +56,15 @@ public static class DependencyInjection
             .Validate(o => o.CodeExpiryMinutes > 0, "RESET_CODE_EXPIRY_MINUTES must be positive.")
             .ValidateOnStart();
 
+        services.AddOptions<BusinessHoursOptions>()
+            .Configure(options =>
+            {
+                options.WorkdayStart = ParseTime(configuration["WORKDAY_START"], new TimeOnly(8, 0));
+                options.WorkdayEnd = ParseTime(configuration["WORKDAY_END"], new TimeOnly(17, 0));
+            })
+            .Validate(o => o.WorkdayEnd > o.WorkdayStart, "WORKDAY_END must be later than WORKDAY_START.")
+            .ValidateOnStart();
+
         services.AddMemoryCache();
 
         // One message per field at a time: the first broken rule is the one worth showing.
@@ -71,6 +81,7 @@ public static class DependencyInjection
         services.AddScoped<IVehicleService, VehicleService>();
         services.AddScoped<IServiceCatalogService, ServiceCatalogService>();
         services.AddScoped<ILookupService, LookupService>();
+        services.AddScoped<IEmployeeService, EmployeeService>();
 
         // The reference tables share one controller shape, so each is registered under the
         // generic contract that controller asks for.
@@ -82,4 +93,9 @@ public static class DependencyInjection
 
         return services;
     }
+
+    private static TimeOnly ParseTime(string? value, TimeOnly fallback) =>
+        TimeOnly.TryParseExact(value, "HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out var time)
+            ? time
+            : fallback;
 }

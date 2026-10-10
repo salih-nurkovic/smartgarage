@@ -28,6 +28,10 @@ public static partial class ValidationRules
     public const int MonthsIntervalMax = 240;
     public const int VehicleAgeMaxYears = 100;
 
+    public const int PositionMaxLength = 80;
+    public const int SpecializationMaxLength = 120;
+    public const int HireYearMin = 1970;
+
     public const int VinLength = 17;
     public const int PlateMinLength = 3;
     public const int PlateMaxLength = 15;

@@ -6,6 +6,7 @@ using SmartGarage.Application.Abstractions;
 using SmartGarage.Domain.Entities;
 using SmartGarage.Infrastructure.Email;
 using SmartGarage.Infrastructure.Identity;
+using SmartGarage.Infrastructure.Messaging;
 using SmartGarage.Infrastructure.Persistence;
 using SmartGarage.Infrastructure.Persistence.Interceptors;
 using SmartGarage.Infrastructure.Persistence.Seeding;
@@ -35,7 +36,6 @@ public static class DependencyInjection
 
         // Stateless and built around one signing key, so a single instance serves every request.
         services.AddSingleton<IJwtTokenService, JwtTokenService>();
-        services.AddScoped<IPasswordResetCodeSender, DevelopmentPasswordResetCodeSender>();
 
         // Holds only two values read from configuration at construction, so one instance is enough.
         services.AddSingleton<IImageStore, LocalImageStore>();
@@ -56,11 +56,52 @@ public static class DependencyInjection
         return services.AddInfrastructureCore(configuration);
     }
 
+    private static void AddMessaging(this IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddOptions<RabbitMqOptions>()
+            .Configure(options =>
+            {
+                options.Host = configuration["RABBITMQ_HOST"] ?? string.Empty;
+                options.Port = configuration.GetValue("RABBITMQ_PORT", 5672);
+                options.VirtualHost = configuration["RABBITMQ_VIRTUAL_HOST"] ?? "/";
+                options.UserName = configuration["RABBITMQ_USERNAME"] ?? string.Empty;
+                options.Password = configuration["RABBITMQ_PASSWORD"] ?? string.Empty;
+                options.Exchange = configuration["RABBITMQ_EXCHANGE"] ?? string.Empty;
+                options.PrefetchCount = configuration.GetValue<ushort>("RABBITMQ_PREFETCH_COUNT", 16);
+                options.RetryCount = configuration.GetValue("RABBITMQ_RETRY_COUNT", 4);
+                options.RetryBaseSeconds = configuration.GetValue("RABBITMQ_RETRY_BASE_SECONDS", 1);
+            })
+            .Validate(
+                o => !string.IsNullOrWhiteSpace(o.Host) && !string.IsNullOrWhiteSpace(o.Exchange),
+                "RABBITMQ_HOST and RABBITMQ_EXCHANGE must be set.")
+            .ValidateOnStart();
+
+        services.AddOptions<SmtpOptions>()
+            .Configure(options =>
+            {
+                options.Host = configuration["SMTP_HOST"] ?? string.Empty;
+                options.Port = configuration.GetValue("SMTP_PORT", 1025);
+                options.UserName = configuration["SMTP_USERNAME"];
+                options.Password = configuration["SMTP_PASSWORD"];
+                options.UseSsl = configuration.GetValue("SMTP_USE_SSL", false);
+                options.FromEmail = configuration["SMTP_FROM_EMAIL"] ?? string.Empty;
+                options.FromName = configuration["SMTP_FROM_NAME"] ?? string.Empty;
+            });
+
+        // Singletons on purpose: the instructions require one connection for the whole process,
+        // never one per publish.
+        services.AddSingleton<RabbitMqConnection>();
+        services.AddSingleton<IEventPublisher, RabbitMqEventPublisher>();
+        services.AddSingleton<IEmailSender, SmtpEmailSender>();
+    }
+
     private static IServiceCollection AddInfrastructureCore(
         this IServiceCollection services,
         IConfiguration configuration)
     {
         services.AddSingleton<IDateTimeProvider, SystemDateTimeProvider>();
+
+        services.AddMessaging(configuration);
 
         services.AddScoped<AuditingInterceptor>();
         services.AddScoped<SoftDeleteInterceptor>();

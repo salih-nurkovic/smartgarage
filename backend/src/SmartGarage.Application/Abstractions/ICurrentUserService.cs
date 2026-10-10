@@ -21,6 +21,9 @@ public interface ICurrentUserService
     /// <summary>The <c>jti</c> of the access token on this request, which identifies the session.</summary>
     string? JwtId { get; }
 
+    /// <summary>Id of the current request, carried on messages so a Worker failure can be traced back.</summary>
+    string? CorrelationId { get; }
+
     /// <summary>Address the request came from, recorded on the session for auditing.</summary>
     string? IpAddress { get; }
 

@@ -65,7 +65,8 @@ var swaggerEnabled = builder.Configuration.GetValue("ENABLE_SWAGGER", false);
 if (swaggerEnabled)
 {
     app.UseSwagger();
-    app.UseSwaggerUI();
+    // Uneseni token ostaje zapamcen i nakon osvjezavanja stranice.
+    app.UseSwaggerUI(options => options.EnablePersistAuthorization());
 }
 
 // NAMJERNO nema UseStaticFiles(): slike se citaju iskljucivo kroz endpointe koji

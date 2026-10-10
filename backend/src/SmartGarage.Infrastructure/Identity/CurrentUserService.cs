@@ -33,6 +33,8 @@ public sealed class CurrentUserService : ICurrentUserService
 
     public string? JwtId => Principal?.FindFirstValue(AppClaims.JwtId);
 
+    public string? CorrelationId => _httpContextAccessor.HttpContext?.TraceIdentifier;
+
     public string? IpAddress =>
         _httpContextAccessor.HttpContext?.Connection.RemoteIpAddress?.ToString();
 

@@ -44,7 +44,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 
     public TestClock Clock { get; } = new();
 
-    public CapturingResetCodeSender ResetCodes { get; } = new();
+    public CapturingEventPublisher Events { get; } = new();
 
     public async Task InitializeAsync()
     {
@@ -80,8 +80,8 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
             services.RemoveAll<IDateTimeProvider>();
             services.AddSingleton<IDateTimeProvider>(Clock);
 
-            services.RemoveAll<IPasswordResetCodeSender>();
-            services.AddSingleton<IPasswordResetCodeSender>(ResetCodes);
+            services.RemoveAll<IEventPublisher>();
+            services.AddSingleton<IEventPublisher>(Events);
         });
 
     private static async Task DropTestDatabaseAsync()

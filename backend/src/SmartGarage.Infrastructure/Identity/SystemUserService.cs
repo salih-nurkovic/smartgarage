@@ -23,6 +23,8 @@ public sealed class SystemUserService : ICurrentUserService
 
     public string? IpAddress => null;
 
+    public string? CorrelationId => null;
+
     public IReadOnlyCollection<string> Roles => [];
 
     public bool IsAuthenticated => false;

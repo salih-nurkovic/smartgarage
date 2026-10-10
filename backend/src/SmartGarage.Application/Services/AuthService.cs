@@ -10,6 +10,8 @@ using SmartGarage.Application.Abstractions;
 using SmartGarage.Application.Dtos.Auth;
 using SmartGarage.Application.Dtos.Users;
 using SmartGarage.Application.Options;
+using SmartGarage.Contracts.Events;
+using SmartGarage.Contracts.Routing;
 using SmartGarage.Domain.Constants;
 using SmartGarage.Domain.Entities;
 using SmartGarage.Domain.Exceptions;
@@ -42,7 +44,7 @@ public sealed class AuthService : IAuthService
     private readonly ICurrentUserService _currentUser;
     private readonly IDateTimeProvider _clock;
     private readonly IPasswordHasher<ApplicationUser> _hasher;
-    private readonly IPasswordResetCodeSender _codeSender;
+    private readonly IEventPublisher _events;
     private readonly JwtOptions _jwt;
     private readonly PasswordResetOptions _reset;
     private readonly ILogger<AuthService> _logger;
@@ -55,7 +57,7 @@ public sealed class AuthService : IAuthService
         ICurrentUserService currentUser,
         IDateTimeProvider clock,
         IPasswordHasher<ApplicationUser> hasher,
-        IPasswordResetCodeSender codeSender,
+        IEventPublisher events,
         IOptions<JwtOptions> jwt,
         IOptions<PasswordResetOptions> reset,
         ILogger<AuthService> logger)
@@ -67,7 +69,7 @@ public sealed class AuthService : IAuthService
         _currentUser = currentUser;
         _clock = clock;
         _hasher = hasher;
-        _codeSender = codeSender;
+        _events = events;
         _jwt = jwt.Value;
         _reset = reset.Value;
         _logger = logger;
@@ -111,6 +113,20 @@ public sealed class AuthService : IAuthService
             ct);
 
         _logger.LogInformation("User {UserName} registered.", user.UserName);
+
+        // Published only after the transaction has committed, so the Worker never welcomes a
+        // user whose registration was rolled back.
+        await _events.PublishAsync(
+            new UserRegisteredEvent
+            {
+                Email = user.Email,
+                FirstName = user.FirstName,
+                UserName = user.UserName,
+                CorrelationId = _currentUser.CorrelationId,
+            },
+            MessageRouting.RoutingKeys.UserRegistered,
+            ct);
+
         return response;
     }
 
@@ -258,8 +274,18 @@ public sealed class AuthService : IAuthService
 
         await _db.SaveChangesAsync(ct);
 
-        await _codeSender.SendAsync(
-            new PasswordResetCodeMessage(user.Email!, user.FirstName, code, expiresAtUtc), ct);
+        // The e-mail is the Worker's job. The request returns as soon as the message is queued.
+        await _events.PublishAsync(
+            new PasswordResetRequestedEvent
+            {
+                Email = user.Email!,
+                FirstName = user.FirstName,
+                Code = code,
+                ExpiresAtUtc = expiresAtUtc,
+                CorrelationId = _currentUser.CorrelationId,
+            },
+            MessageRouting.RoutingKeys.PasswordResetRequested,
+            ct);
     }
 
     public async Task ResetPasswordAsync(ResetPasswordRequest request, CancellationToken ct)

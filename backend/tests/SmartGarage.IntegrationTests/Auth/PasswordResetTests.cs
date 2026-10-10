@@ -33,7 +33,7 @@ public sealed class PasswordResetTests
         var email = session.User.Email;
 
         await RequestCodeAsync(userName);
-        var code = _factory.ResetCodes.LatestCodeFor(email);
+        var code = _factory.Events.LatestResetCodeFor(email);
 
         code.Should().MatchRegex("^[0-9]{6}$");
 
@@ -60,7 +60,7 @@ public sealed class PasswordResetTests
         var (session, userName) = await _client.RegisterNewCustomerAsync();
 
         await RequestCodeAsync(userName);
-        var code = _factory.ResetCodes.LatestCodeFor(session.User.Email);
+        var code = _factory.Events.LatestResetCodeFor(session.User.Email);
 
         await using var scope = _factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<SmartGarageDbContext>();
@@ -77,7 +77,7 @@ public sealed class PasswordResetTests
         var (session, userName) = await _client.RegisterNewCustomerAsync();
 
         await RequestCodeAsync(userName);
-        var code = _factory.ResetCodes.LatestCodeFor(session.User.Email);
+        var code = _factory.Events.LatestResetCodeFor(session.User.Email);
 
         try
         {
@@ -101,7 +101,7 @@ public sealed class PasswordResetTests
         var (session, userName) = await _client.RegisterNewCustomerAsync();
 
         await RequestCodeAsync(userName);
-        var code = _factory.ResetCodes.LatestCodeFor(session.User.Email);
+        var code = _factory.Events.LatestResetCodeFor(session.User.Email);
         var wrongCode = code == "000000" ? "111111" : "000000";
 
         for (var attempt = 0; attempt < SecurityRules.ResetCodeMaxFailedAttempts; attempt++)
@@ -115,7 +115,7 @@ public sealed class PasswordResetTests
     [Fact]
     public async Task ForgotPassword_ForAnUnknownAccount_Returns200AndSendsNothing()
     {
-        var sentBefore = _factory.ResetCodes.Messages.Count;
+        var sentBefore = _factory.Events.Published.Count;
 
         var response = await _client.PostAsJsonAsync(
             "/api/auth/forgot-password",
@@ -123,7 +123,7 @@ public sealed class PasswordResetTests
 
         // Same answer as for a real account, so the endpoint cannot be used to list users.
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        _factory.ResetCodes.Messages.Should().HaveCount(sentBefore);
+        _factory.Events.Published.Should().HaveCount(sentBefore);
     }
 
     [Fact]
@@ -132,10 +132,10 @@ public sealed class PasswordResetTests
         var (session, userName) = await _client.RegisterNewCustomerAsync();
 
         await RequestCodeAsync(userName);
-        var firstCode = _factory.ResetCodes.LatestCodeFor(session.User.Email);
+        var firstCode = _factory.Events.LatestResetCodeFor(session.User.Email);
 
         await RequestCodeAsync(session.User.Email);
-        var secondCode = _factory.ResetCodes.LatestCodeFor(session.User.Email);
+        var secondCode = _factory.Events.LatestResetCodeFor(session.User.Email);
 
         if (firstCode != secondCode)
         {

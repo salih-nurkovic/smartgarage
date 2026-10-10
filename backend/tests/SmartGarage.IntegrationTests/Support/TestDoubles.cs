@@ -1,4 +1,5 @@
 using SmartGarage.Application.Abstractions;
+using SmartGarage.Contracts.Events;
 
 namespace SmartGarage.IntegrationTests.Support;
 
@@ -13,22 +14,26 @@ public sealed class TestClock : IDateTimeProvider
 }
 
 /// <summary>
-/// Stands where the e-mail would go and keeps what was "sent". The reset code exists in plain
-/// form only in that message, so this is the one way a test can learn it - the same way a
-/// real user does.
+/// Stands where the broker would be and keeps what was published, so the tests need no
+/// RabbitMQ. The reset code exists in readable form only in the published message, so this is
+/// the one way a test can learn it - the same way the Worker does.
 /// </summary>
-public sealed class CapturingResetCodeSender : IPasswordResetCodeSender
+public sealed class CapturingEventPublisher : IEventPublisher
 {
-    private readonly List<PasswordResetCodeMessage> _messages = [];
+    private readonly List<IntegrationEvent> _published = [];
 
-    public IReadOnlyList<PasswordResetCodeMessage> Messages => _messages;
+    public IReadOnlyList<IntegrationEvent> Published => _published;
 
-    public Task SendAsync(PasswordResetCodeMessage message, CancellationToken cancellationToken)
+    public Task PublishAsync<TEvent>(TEvent message, string routingKey, CancellationToken ct)
+        where TEvent : IntegrationEvent
     {
-        _messages.Add(message);
+        _published.Add(message);
         return Task.CompletedTask;
     }
 
-    public string LatestCodeFor(string email) =>
-        _messages.Last(m => string.Equals(m.Email, email, StringComparison.OrdinalIgnoreCase)).Code;
+    public string LatestResetCodeFor(string email) =>
+        _published
+            .OfType<PasswordResetRequestedEvent>()
+            .Last(m => string.Equals(m.Email, email, StringComparison.OrdinalIgnoreCase))
+            .Code;
 }

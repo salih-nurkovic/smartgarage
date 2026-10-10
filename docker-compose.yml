@@ -1,0 +1,41 @@
+name: smartgarage
+
+# Infrastruktura koju API i Worker trebaju. Sve vrijednosti dolaze iz .env,
+# a svaki image ima eksplicitnu verziju (upute, sekcija 3.2: nikada :latest).
+
+services:
+  rabbitmq:
+    image: rabbitmq:3.13.7-management-alpine
+    container_name: smartgarage-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+    ports:
+      - "${RABBITMQ_PORT}:5672"
+      - "${RABBITMQ_MANAGEMENT_PORT}:15672"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - smartgarage-net
+
+  # Hvata sve e-mailove koje Worker posalje; citaju se na http://localhost:8025.
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+    container_name: smartgarage-mailhog
+    ports:
+      - "${SMTP_PORT}:1025"
+      - "${MAILHOG_UI_PORT}:8025"
+    networks:
+      - smartgarage-net
+
+networks:
+  smartgarage-net:
+    driver: bridge
+
+volumes:
+  rabbitmq-data:

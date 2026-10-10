@@ -3,6 +3,7 @@ using Serilog;
 using Serilog.Events;
 using SmartGarage.Infrastructure;
 using SmartGarage.Infrastructure.Configuration;
+using SmartGarage.Worker.Extensions;
 
 // ---------------------------------------------------------------------------
 //  SmartGarage Worker  -  pomocni mikroservis
@@ -15,7 +16,8 @@ using SmartGarage.Infrastructure.Configuration;
 //  Worker komunicira sa API-jem iskljucivo preko RabbitMQ-a. Nema HTTP povrsinu
 //  osim health porta.
 //
-//  Faza 1: kostur hosta. Consumeri i Quartz zadaci dolaze u fazama 5-9.
+//  Consumeri se registruju kroz AddWorkerServices(); Quartz zadaci dolaze sa
+//  fazama koje ih trebaju.
 // ---------------------------------------------------------------------------
 
 var envFile = DotEnvLoader.Load(AppContext.BaseDirectory);
@@ -43,6 +45,7 @@ builder.Services.AddSerilog((services, configuration) => configuration
 // Worker koristi istu infrastrukturu, ali bez prijavljenog korisnika: on obraduje
 // poruke, ne HTTP zahtjeve. Migracije NE pokrece - to radi iskljucivo API.
 builder.Services.AddInfrastructureForWorker(builder.Configuration);
+builder.Services.AddWorkerServices();
 
 var host = builder.Build();
 
