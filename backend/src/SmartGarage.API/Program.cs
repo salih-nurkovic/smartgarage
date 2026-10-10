@@ -1,6 +1,9 @@
 using System.Globalization;
 using Serilog;
 using Serilog.Events;
+using SmartGarage.API.Extensions;
+using SmartGarage.API.Middleware;
+using SmartGarage.Application;
 using SmartGarage.Infrastructure;
 using SmartGarage.Infrastructure.Configuration;
 using SmartGarage.Infrastructure.Persistence.Seeding;
@@ -9,9 +12,8 @@ using SmartGarage.Infrastructure.Persistence.Seeding;
 //  SmartGarage REST API
 //  Student: Salih Nurkovic, IB220014
 //
-//  Faza 1: kostur hosta. Servisi, autentifikacija, baza i kontroleri dolaze u
-//  fazama 2-9, svaki put kroz JEDNU extension metodu, tako da ovdje nikada ne
-//  nastane duplirana registracija (upute, sekcija 3.4).
+//  Ovdje se samo sklapa host. Svaki sloj se registruje kroz JEDNU extension
+//  metodu, tako da nikada ne nastane duplirana registracija (upute, sekcija 3.4).
 // ---------------------------------------------------------------------------
 
 // .env se ucitava prije svega ostalog: on je jedini izvor konfiguracije.
@@ -42,53 +44,39 @@ builder.Host.UseSerilog((context, services, configuration) => configuration
             "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj} {Properties:j}{NewLine}{Exception}"));
 
 // --- Servisi ---------------------------------------------------------------
-// Jedan poziv, jedno mjesto. Sve iz Infrastructure sloja (DbContext, Identity,
-// seederi) registruje se ovdje i nigdje drugdje.
+// Tri poziva, po jedan za svaki sloj. Sve registracije zive u tim extension
+// metodama i nigdje drugdje, pa se nista ne moze registrovati dvaput.
 builder.Services.AddInfrastructure(builder.Configuration);
-
-builder.Services.AddControllers();
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddHealthChecks();
-
-// CORS se konfigurise TACNO JEDNOM, sa eksplicitno navedenim origin-ima.
-const string CorsPolicyName = "SmartGarageCors";
-var allowedOrigins = (builder.Configuration["CORS_ALLOWED_ORIGINS"] ?? string.Empty)
-    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-
-builder.Services.AddCors(options => options.AddPolicy(CorsPolicyName, policy =>
-{
-    if (allowedOrigins.Length > 0)
-    {
-        policy.WithOrigins(allowedOrigins).AllowAnyHeader().AllowAnyMethod().AllowCredentials();
-    }
-}));
-
-var swaggerEnabled = builder.Configuration.GetValue("ENABLE_SWAGGER", false);
-if (swaggerEnabled)
-{
-    builder.Services.AddSwaggerGen();
-}
+builder.Services.AddApplication(builder.Configuration);
+builder.Services.AddApiServices(builder.Configuration);
 
 var app = builder.Build();
 
 // --- Pipeline --------------------------------------------------------------
 app.UseSerilogRequestLogging();
 
+// Prvi u nizu, da uhvati izuzetak iz bilo kojeg dijela pipeline-a iza sebe.
+app.UseMiddleware<ExceptionHandlingMiddleware>();
+
 // NAMJERNO nema UseHttpsRedirection(): upute (9.2) preporucuju http pristup API-ju
 // jer self-signed certifikati mogu isteci ili biti nevalidni tokom pregleda rada.
 
+var swaggerEnabled = builder.Configuration.GetValue("ENABLE_SWAGGER", false);
 if (swaggerEnabled)
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
 
-app.UseStaticFiles();
-app.UseCors(CorsPolicyName);
+// NAMJERNO nema UseStaticFiles(): slike se citaju iskljucivo kroz endpointe koji
+// provjeravaju prijavu i vlasnistvo (upute, sekcija 5), nikada direktno sa diska.
+app.UseCors(ServiceCollectionExtensions.CorsPolicyName);
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapControllers();
+// Svaki kontroler trazi prijavu, osim akcija koje su izricito [AllowAnonymous].
+// Zaboravljen atribut zato znaci zakljucan endpoint, a ne otvoren.
+app.MapControllers().RequireAuthorization();
 
 // Health endpoint-i: Docker Compose ih koristi u depends_on / healthcheck,
 // pa Worker ne krece prije nego API primijeni migracije.

@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using SmartGarage.Application.Abstractions;
+using SmartGarage.Domain.Constants;
 
 namespace SmartGarage.Infrastructure.Identity;
 
@@ -24,14 +25,19 @@ public sealed class CurrentUserService : ICurrentUserService
     private ClaimsPrincipal? Principal => _httpContextAccessor.HttpContext?.User;
 
     public int? UserId =>
-        int.TryParse(Principal?.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : null;
+        int.TryParse(Principal?.FindFirstValue(AppClaims.UserId), out var id) ? id : null;
 
-    public string? UserName => Principal?.FindFirstValue(ClaimTypes.Name);
+    public string? UserName => Principal?.FindFirstValue(AppClaims.UserName);
 
-    public string? Email => Principal?.FindFirstValue(ClaimTypes.Email);
+    public string? Email => Principal?.FindFirstValue(AppClaims.Email);
+
+    public string? JwtId => Principal?.FindFirstValue(AppClaims.JwtId);
+
+    public string? IpAddress =>
+        _httpContextAccessor.HttpContext?.Connection.RemoteIpAddress?.ToString();
 
     public IReadOnlyCollection<string> Roles =>
-        Principal?.FindAll(ClaimTypes.Role).Select(c => c.Value).ToArray() ?? [];
+        Principal?.FindAll(AppClaims.Role).Select(c => c.Value).ToArray() ?? [];
 
     public bool IsAuthenticated => Principal?.Identity?.IsAuthenticated ?? false;
 

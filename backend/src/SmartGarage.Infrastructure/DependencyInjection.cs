@@ -4,10 +4,12 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using SmartGarage.Application.Abstractions;
 using SmartGarage.Domain.Entities;
+using SmartGarage.Infrastructure.Email;
 using SmartGarage.Infrastructure.Identity;
 using SmartGarage.Infrastructure.Persistence;
 using SmartGarage.Infrastructure.Persistence.Interceptors;
 using SmartGarage.Infrastructure.Persistence.Seeding;
+using SmartGarage.Infrastructure.Storage;
 
 namespace SmartGarage.Infrastructure;
 
@@ -30,6 +32,13 @@ public static class DependencyInjection
     {
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentUserService, CurrentUserService>();
+
+        // Stateless and built around one signing key, so a single instance serves every request.
+        services.AddSingleton<IJwtTokenService, JwtTokenService>();
+        services.AddScoped<IPasswordResetCodeSender, DevelopmentPasswordResetCodeSender>();
+
+        // Holds only two values read from configuration at construction, so one instance is enough.
+        services.AddSingleton<IImageStore, LocalImageStore>();
 
         return services.AddInfrastructureCore(configuration);
     }
@@ -80,6 +89,11 @@ public static class DependencyInjection
                 provider.GetRequiredService<AuditingInterceptor>(),
                 provider.GetRequiredService<SoftDeleteInterceptor>());
         });
+
+        // Services see the context only through this interface, and get the very same scoped
+        // instance Identity's stores use, so one request has one unit of work.
+        services.AddScoped<IAppDbContext>(
+            provider => provider.GetRequiredService<SmartGarageDbContext>());
 
         // Seeders run once at startup from DatabaseInitializer. Registered here so they can
         // take the same DbContext, configuration and logger as everything else.

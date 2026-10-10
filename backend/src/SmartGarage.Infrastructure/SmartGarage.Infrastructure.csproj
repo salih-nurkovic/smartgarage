@@ -23,6 +23,9 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="9.0.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="9.0.0" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.0" />
+    <!-- Issues the access tokens. Same version the JWT bearer middleware in the API resolves,
+         so the token writer and the token reader are one library. -->
+    <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" Version="8.0.1" />
     <!-- Raw RabbitMQ client v7: async-native consumer API (AsyncEventingBasicConsumer),
          as required by Appendix A.1 of the course instructions. -->
     <PackageReference Include="RabbitMQ.Client" Version="7.0.0" />

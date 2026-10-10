@@ -18,6 +18,12 @@ public interface ICurrentUserService
 
     string? Email { get; }
 
+    /// <summary>The <c>jti</c> of the access token on this request, which identifies the session.</summary>
+    string? JwtId { get; }
+
+    /// <summary>Address the request came from, recorded on the session for auditing.</summary>
+    string? IpAddress { get; }
+
     IReadOnlyCollection<string> Roles { get; }
 
     bool IsAuthenticated { get; }

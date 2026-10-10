@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using SmartGarage.Application.Abstractions;
 using SmartGarage.Domain.Entities;
 using SmartGarage.Domain.Entities.Reference;
 using SmartGarage.Infrastructure.Persistence.Seeding;
@@ -15,7 +16,7 @@ namespace SmartGarage.Infrastructure.Persistence;
 /// </para>
 /// </summary>
 public class SmartGarageDbContext
-    : IdentityDbContext<ApplicationUser, ApplicationRole, int>
+    : IdentityDbContext<ApplicationUser, ApplicationRole, int>, IAppDbContext
 {
     public SmartGarageDbContext(DbContextOptions<SmartGarageDbContext> options)
         : base(options)
@@ -26,6 +27,7 @@ public class SmartGarageDbContext
     public DbSet<EmployeeProfile> EmployeeProfiles => Set<EmployeeProfile>();
     public DbSet<EmployeeSchedule> EmployeeSchedules => Set<EmployeeSchedule>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<PasswordResetCode> PasswordResetCodes => Set<PasswordResetCode>();
 
     // --- Vehicles -----------------------------------------------------------
     public DbSet<Vehicle> Vehicles => Set<Vehicle>();
@@ -61,6 +63,39 @@ public class SmartGarageDbContext
 
     // --- Operations ---------------------------------------------------------
     public DbSet<ErrorLog> ErrorLogs => Set<ErrorLog>();
+
+    public Task<T> ExecuteInTransactionAsync<T>(
+        Func<CancellationToken, Task<T>> operation,
+        CancellationToken cancellationToken = default)
+    {
+        // The retrying execution strategy refuses a transaction it did not start itself,
+        // because it could not replay one. Handing it the whole unit of work is the supported
+        // way to have both retries and an explicit transaction.
+        var strategy = Database.CreateExecutionStrategy();
+
+        return strategy.ExecuteAsync(
+            async token =>
+            {
+                await using var transaction = await Database.BeginTransactionAsync(token);
+
+                // An exception leaves the transaction uncommitted, and disposing it rolls back.
+                var result = await operation(token);
+                await transaction.CommitAsync(token);
+                return result;
+            },
+            cancellationToken);
+    }
+
+    public Task ExecuteInTransactionAsync(
+        Func<CancellationToken, Task> operation,
+        CancellationToken cancellationToken = default) =>
+        ExecuteInTransactionAsync(
+            async token =>
+            {
+                await operation(token);
+                return true;
+            },
+            cancellationToken);
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -136,5 +171,6 @@ public class SmartGarageDbContext
         builder.Entity<EmployeeProfile>().HasQueryFilter(x => !x.User.IsDeleted);
         builder.Entity<EmployeeSchedule>().HasQueryFilter(x => !x.EmployeeProfile.User.IsDeleted);
         builder.Entity<RefreshToken>().HasQueryFilter(x => !x.User.IsDeleted);
+        builder.Entity<PasswordResetCode>().HasQueryFilter(x => !x.User.IsDeleted);
     }
 }

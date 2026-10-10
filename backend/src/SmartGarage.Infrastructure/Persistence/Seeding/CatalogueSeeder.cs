@@ -204,10 +204,6 @@ public sealed class CatalogueSeeder
             "Krpljenje probušene gume i provjera pritiska.",
             4, 20.00m, 30, null, null, null, null, [8], AllEngines),
 
-        new("Sezonska zamjena guma",
-            "Zamjena ljetnih i zimskih guma uz čuvanje kompleta.",
-            4, 45.00m, 50, null, 6, null, null, [10, 11], AllEngines),
-
         // ---------- 5. Dijagnostika ----------
         new("Kompjuterska dijagnostika",
             "Očitavanje i tumačenje grešaka iz svih upravljačkih jedinica.",
@@ -234,10 +230,6 @@ public sealed class CatalogueSeeder
             "Zamjena sijalica i popravka svjetlosne instalacije.",
             6, 40.00m, 45, null, null, null, null, [17, 8], AllEngines),
 
-        new("Servis startera",
-            "Pregled, čišćenje ili zamjena elektropokretača.",
-            6, 150.00m, 120, null, null, 6, null, [14, 17], AllCombustion),
-
         // ---------- 7. Klima ----------
         new("Punjenje klima uređaja",
             "Punjenje rashladnog sredstva i provjera curenja.",
@@ -259,10 +251,6 @@ public sealed class CatalogueSeeder
         new("Popravka ogrebotina",
             "Lakiranje i popravka manjih oštećenja na karoseriji.",
             8, 180.00m, 240, null, null, null, null, [], AllEngines),
-
-        new("Zaštita podvozja",
-            "Nanošenje zaštitnog sloja protiv korozije.",
-            8, 160.00m, 180, null, 36, 5, null, [10, 4], AllEngines),
     ];
 
     /// <summary>
@@ -271,13 +259,14 @@ public sealed class CatalogueSeeder
     /// </summary>
     private static string Slugify(string value)
     {
+        // Lowercased first, so that a capital Č at the start of a name is folded as well.
         var folded = value
+            .ToLowerInvariant()
             .Replace("č", "c", StringComparison.Ordinal)
             .Replace("ć", "c", StringComparison.Ordinal)
             .Replace("ž", "z", StringComparison.Ordinal)
             .Replace("š", "s", StringComparison.Ordinal)
-            .Replace("đ", "d", StringComparison.Ordinal)
-            .ToLowerInvariant();
+            .Replace("đ", "d", StringComparison.Ordinal);
 
         var chars = folded
             .Select(c => char.IsLetterOrDigit(c) ? c : '-')

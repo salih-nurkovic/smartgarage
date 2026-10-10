@@ -19,6 +19,10 @@ public sealed class SystemUserService : ICurrentUserService
 
     public string? Email => null;
 
+    public string? JwtId => null;
+
+    public string? IpAddress => null;
+
     public IReadOnlyCollection<string> Roles => [];
 
     public bool IsAuthenticated => false;
