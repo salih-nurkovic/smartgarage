@@ -7,6 +7,7 @@ services:
   rabbitmq:
     image: rabbitmq:3.13.7-management-alpine
     container_name: smartgarage-rabbitmq
+    restart: unless-stopped
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
@@ -27,6 +28,7 @@ services:
   mailhog:
     image: mailhog/mailhog:v1.0.1
     container_name: smartgarage-mailhog
+    restart: unless-stopped
     ports:
       - "${SMTP_PORT}:1025"
       - "${MAILHOG_UI_PORT}:8025"

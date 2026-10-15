@@ -464,7 +464,7 @@ namespace SmartGarage.Infrastructure.Migrations
                     b.Property<DateTime>("ChangedAtUtc")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("ChangedByUserId")
+                    b.Property<int?>("ChangedByUserId")
                         .HasColumnType("int");
 
                     b.Property<int?>("FromStatus")
@@ -2040,6 +2040,9 @@ namespace SmartGarage.Infrastructure.Migrations
                     b.Property<DateTime>("OccurredAtUtc")
                         .HasColumnType("datetime2");
 
+                    b.Property<int?>("PerformedAtMileageKm")
+                        .HasColumnType("int");
+
                     b.Property<DateTime?>("PerformedAtUtc")
                         .HasColumnType("datetime2");
 
@@ -2278,8 +2281,7 @@ namespace SmartGarage.Infrastructure.Migrations
                     b.HasOne("SmartGarage.Domain.Entities.ApplicationUser", "ChangedByUser")
                         .WithMany()
                         .HasForeignKey("ChangedByUserId")
-                        .OnDelete(DeleteBehavior.NoAction)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.NoAction);
 
                     b.Navigation("Appointment");
 

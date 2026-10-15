@@ -47,7 +47,7 @@ public abstract class CrudService<TEntity, TResponse, TSearch, TRequest>
     /// <summary>The rows the caller may see at all. Overridden to scope by owner.</summary>
     protected virtual IQueryable<TEntity> Query => Db.Set<TEntity>();
 
-    public async Task<PagedResult<TResponse>> GetAsync(TSearch search, CancellationToken ct)
+    public virtual async Task<PagedResult<TResponse>> GetAsync(TSearch search, CancellationToken ct)
     {
         var filtered = Filter(Query.AsNoTracking(), search);
         var totalCount = await filtered.CountAsync(ct);
@@ -60,7 +60,7 @@ public abstract class CrudService<TEntity, TResponse, TSearch, TRequest>
             items, search.ClampedPage, search.ClampedPageSize, totalCount);
     }
 
-    public async Task<TResponse> GetByIdAsync(int id, CancellationToken ct) =>
+    public virtual async Task<TResponse> GetByIdAsync(int id, CancellationToken ct) =>
         await Project(Query.AsNoTracking().Where(e => e.Id == id)).SingleOrDefaultAsync(ct)
         ?? throw new NotFoundException(NotFoundMessage);
 

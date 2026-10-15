@@ -85,7 +85,11 @@ public sealed class ServiceSearchRequest : BaseSearchRequest
 
     public int? EngineTypeId { get; init; }
 
-    public IReadOnlyList<int> TagIds { get; init; } = [];
+    // A concrete List: the query-string binder fills a list it can add to, and silently
+    // leaves a read-only collection empty.
+#pragma warning disable CA1002
+    public List<int> TagIds { get; init; } = [];
+#pragma warning restore CA1002
 
     public bool? IsActive { get; init; }
 }

@@ -119,6 +119,7 @@ public sealed class AuthService : IAuthService
         await _events.PublishAsync(
             new UserRegisteredEvent
             {
+                UserId = user.Id,
                 Email = user.Email,
                 FirstName = user.FirstName,
                 UserName = user.UserName,

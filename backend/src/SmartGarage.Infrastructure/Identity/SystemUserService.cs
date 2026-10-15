@@ -25,11 +25,11 @@ public sealed class SystemUserService : ICurrentUserService
 
     public string? CorrelationId => null;
 
-    public IReadOnlyCollection<string> Roles => [];
+    public IReadOnlyCollection<string> Roles { get; } = [Domain.Constants.Roles.System];
 
     public bool IsAuthenticated => false;
 
-    public bool IsInRole(string role) => false;
+    public bool IsInRole(string role) => role == Domain.Constants.Roles.System;
 
     public int RequireUserId() =>
         throw new InvalidOperationException(

@@ -50,6 +50,7 @@ public static class ApiErrorWriter
         StatusCodes.Status404NotFound => "Zapis nije pronađen",
         StatusCodes.Status409Conflict => "Sukob sa postojećim podacima",
         StatusCodes.Status422UnprocessableEntity => "Radnja nije dozvoljena",
+        StatusCodes.Status502BadGateway => "Vanjski servis nije dostupan",
         _ => "Greška na serveru",
     };
 }

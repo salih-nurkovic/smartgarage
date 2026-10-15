@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -13,7 +14,26 @@ public sealed record ConsumedMessage(
     ReadOnlyMemory<byte> Body,
     string? MessageId,
     string? CorrelationId,
-    string? Type);
+    string? Type)
+{
+    /// <summary>
+    /// Reads the body as an event. A body that cannot be parsed will not parse on a retry
+    /// either, so that is reported as a poison message.
+    /// </summary>
+    public TEvent Read<TEvent>()
+    {
+        try
+        {
+            return JsonSerializer.Deserialize<TEvent>(Body.Span)
+                   ?? throw new PoisonMessageException($"Message {MessageId} has an empty body.");
+        }
+        catch (JsonException exception)
+        {
+            throw new PoisonMessageException(
+                $"The body of message {MessageId} is not valid {typeof(TEvent).Name} JSON.", exception);
+        }
+    }
+}
 
 /// <summary>
 /// Thrown by a handler for a message that can never succeed, such as one that cannot be

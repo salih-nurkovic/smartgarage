@@ -1,11 +1,16 @@
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using SmartGarage.API.Consumers;
 using SmartGarage.API.Filters;
+using SmartGarage.API.Hubs;
+using SmartGarage.Application.Abstractions;
 using SmartGarage.Application.Options;
 using SmartGarage.Domain.Constants;
 
@@ -27,6 +32,7 @@ public static class ServiceCollectionExtensions
     {
         services
             .AddControllers(options => options.Filters.Add<ValidationFilter>())
+            .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()))
             .ConfigureApiBehaviorOptions(options =>
                 options.InvalidModelStateResponseFactory = InvalidModelStateResponse);
 
@@ -36,6 +42,7 @@ public static class ServiceCollectionExtensions
         services.AddJwtAuthentication();
         services.AddRolePolicies();
         services.AddCorsPolicy(configuration);
+        services.AddRealtime();
 
         if (configuration.GetValue("ENABLE_SWAGGER", false))
         {
@@ -92,6 +99,18 @@ public static class ServiceCollectionExtensions
                     RoleClaimType = AppClaims.Role,
                 };
             });
+    }
+
+    private static void AddRealtime(this IServiceCollection services)
+    {
+        // Enums travel as names over the hub as well, the same as in REST responses.
+        services
+            .AddSignalR()
+            .AddJsonProtocol(options => options.PayloadSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+
+        services.AddSingleton<IUserIdProvider, JwtUserIdProvider>();
+        services.AddSingleton<IRealtimeNotifier, SignalRRealtimeNotifier>();
+        services.AddHostedService<RealtimeFanoutConsumer>();
     }
 
     // The only place a policy is tied to role names. Controllers name the policy.

@@ -26,6 +26,10 @@ public sealed class EndpointAuthorizationTests
         "POST api/auth/refresh",
         "POST api/auth/forgot-password",
         "POST api/auth/reset-password",
+
+        // Stripe cannot send a JWT. The request is authenticated by its HMAC signature instead,
+        // checked before anything else is read from it.
+        "POST api/webhooks/stripe",
         "GET /health",
         "GET /health/ready",
     ];

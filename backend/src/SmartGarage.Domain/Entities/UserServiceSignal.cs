@@ -46,6 +46,12 @@ public class UserServiceSignal : BaseEntity
     /// </summary>
     public DateTime? PerformedAtUtc { get; set; }
 
+    /// <summary>
+    /// The odometer reading when the work was done, for signals that record work on the vehicle.
+    /// It is what lets the recommender count kilometres since the service.
+    /// </summary>
+    public int? PerformedAtMileageKm { get; set; }
+
     public ApplicationUser User { get; set; } = null!;
     public Service Service { get; set; } = null!;
     public Vehicle? Vehicle { get; set; }

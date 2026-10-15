@@ -32,6 +32,12 @@ public static partial class ValidationRules
     public const int SpecializationMaxLength = 120;
     public const int HireYearMin = 1970;
 
+    public const int MaxServicesPerAppointment = 10;
+    public const int CustomerNotesMaxLength = 1000;
+    public const int InternalNotesMaxLength = 2000;
+
+    public const int ReviewCommentMaxLength = 1000;
+
     public const int VinLength = 17;
     public const int PlateMinLength = 3;
     public const int PlateMaxLength = 15;

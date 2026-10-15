@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Microsoft.Extensions.Options;
 using SmartGarage.Application.Abstractions;
 using SmartGarage.Contracts.Events;
@@ -36,9 +35,9 @@ public sealed class EmailConsumer : RabbitMqConsumer
         var email = message.RoutingKey switch
         {
             MessageRouting.RoutingKeys.UserRegistered =>
-                EmailTemplates.Welcome(Read<UserRegisteredEvent>(message)),
+                EmailTemplates.Welcome(message.Read<UserRegisteredEvent>()),
             MessageRouting.RoutingKeys.PasswordResetRequested =>
-                EmailTemplates.PasswordReset(Read<PasswordResetRequestedEvent>(message)),
+                EmailTemplates.PasswordReset(message.Read<PasswordResetRequestedEvent>()),
             _ => throw new PoisonMessageException(
                 $"The e-mail queue has no handler for routing key '{message.RoutingKey}'."),
         };
@@ -48,21 +47,5 @@ public sealed class EmailConsumer : RabbitMqConsumer
         _logger.LogInformation(
             "Sent '{Subject}' to {Recipient} for message {MessageId}.",
             email.Subject, email.ToAddress, message.MessageId);
-    }
-
-    private static TEvent Read<TEvent>(ConsumedMessage message)
-    {
-        try
-        {
-            return JsonSerializer.Deserialize<TEvent>(message.Body.Span)
-                   ?? throw new PoisonMessageException("The message body is empty.");
-        }
-        catch (JsonException exception)
-        {
-            // Malformed JSON will be malformed on every retry too.
-            throw new PoisonMessageException(
-                $"The body of message {message.MessageId} is not valid {typeof(TEvent).Name} JSON.",
-                exception);
-        }
     }
 }

@@ -65,6 +65,49 @@ public static class DependencyInjection
             .Validate(o => o.WorkdayEnd > o.WorkdayStart, "WORKDAY_END must be later than WORKDAY_START.")
             .ValidateOnStart();
 
+        services.AddOptions<BookingOptions>()
+            .Configure(options =>
+            {
+                options.MaxConcurrent = configuration.GetValue("APPOINTMENT_MAX_CONCURRENT", 5);
+                options.SlotMinutes = configuration.GetValue("APPOINTMENT_SLOT_MINUTES", 60);
+                options.BufferMinutes = configuration.GetValue("APPOINTMENT_BUFFER_MINUTES", 15);
+                options.CancellationCutoffHours = configuration.GetValue("APPOINTMENT_CANCELLATION_CUTOFF_HOURS", 24);
+                options.MaxDaysAhead = configuration.GetValue("BOOKING_MAX_DAYS_AHEAD", 90);
+                options.ReminderHoursBefore = configuration.GetValue("APPOINTMENT_REMINDER_HOURS_BEFORE", 24);
+            })
+            .Validate(
+                o => o.MaxConcurrent > 0 && o.SlotMinutes > 0 && o.MaxDaysAhead > 0 && o.BufferMinutes >= 0,
+                "The APPOINTMENT_* and BOOKING_* settings must be positive.")
+            .ValidateOnStart();
+
+        services.AddOptions<PaymentOptions>()
+            .Configure(options => options.StripeCurrency = configuration["STRIPE_CURRENCY"] ?? "eur");
+
+        services.AddOptions<RecommenderOptions>()
+            .Configure(options =>
+            {
+                options.TopN = configuration.GetValue("RECOMMENDER_TOP_N", 5);
+                options.AlgorithmVersion = configuration["RECOMMENDER_ALGORITHM_VERSION"] ?? "cbf-1.0";
+                options.SignalHalfLifeDays = Double(configuration, "SIGNAL_HALF_LIFE_DAYS", 180);
+                options.SignalSaturationCount = configuration.GetValue("SIGNAL_SATURATION_COUNT", 8);
+                options.HistoryBlendBeta = Double(configuration, "HISTORY_BLEND_BETA", 0.7);
+                options.HighMileageThresholdKm = configuration.GetValue("HIGH_MILEAGE_THRESHOLD_KM", 150_000);
+                options.OldVehicleAgeYears = configuration.GetValue("OLD_VEHICLE_AGE_YEARS", 10);
+                options.EngineWeight = Double(configuration, "W_ENGINE", 0.20);
+                options.DueWeight = Double(configuration, "W_MILEAGE", 0.30);
+                options.AgeWeight = Double(configuration, "W_AGE", 0.10);
+                options.RatingWeight = Double(configuration, "W_RATING", 0.10);
+                options.BrandModelWeight = Double(configuration, "W_BRAND_MODEL", 0.15);
+                options.RecentPenalty = Double(configuration, "W_RECENT", 0.50);
+                options.ExplanationMinContribution = Double(configuration, "EXPLANATION_MIN_CONTRIBUTION", 0.05);
+                options.UrgentThreshold = Double(configuration, "URGENCY_HITNO_THRESHOLD", 1.0);
+            })
+            .Validate(
+                o => o.TopN > 0 && o.SignalHalfLifeDays > 0 && o.SignalSaturationCount > 0
+                     && o.HistoryBlendBeta is >= 0 and <= 1,
+                "The recommender settings in .env are out of range.")
+            .ValidateOnStart();
+
         services.AddMemoryCache();
 
         // One message per field at a time: the first broken rule is the one worth showing.
@@ -82,6 +125,14 @@ public static class DependencyInjection
         services.AddScoped<IServiceCatalogService, ServiceCatalogService>();
         services.AddScoped<ILookupService, LookupService>();
         services.AddScoped<IEmployeeService, EmployeeService>();
+        services.AddScoped<INotificationService, NotificationService>();
+        services.AddScoped<ISlotPlanner, SlotPlanner>();
+        services.AddScoped<IAppointmentService, AppointmentService>();
+        services.AddScoped<IAvailabilityService, AvailabilityService>();
+        services.AddScoped<IReviewService, ReviewService>();
+        services.AddScoped<IReminderService, ReminderService>();
+        services.AddScoped<IPaymentService, PaymentService>();
+        services.AddScoped<IRecommendationService, RecommendationService>();
 
         // The reference tables share one controller shape, so each is registered under the
         // generic contract that controller asks for.
@@ -93,6 +144,12 @@ public static class DependencyInjection
 
         return services;
     }
+
+    // Decimal settings are written with a dot in .env whatever the machine's language is.
+    private static double Double(IConfiguration configuration, string key, double fallback) =>
+        double.TryParse(configuration[key], NumberStyles.Float, CultureInfo.InvariantCulture, out var value)
+            ? value
+            : fallback;
 
     private static TimeOnly ParseTime(string? value, TimeOnly fallback) =>
         TimeOnly.TryParseExact(value, "HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out var time)

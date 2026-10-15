@@ -57,8 +57,14 @@ public sealed class AuditingInterceptor : SaveChangesInterceptor
             switch (entry.State)
             {
                 case EntityState.Added:
-                    entry.Entity.CreatedAtUtc = now;
-                    entry.Entity.CreatedByUserId = userId;
+                    // A creation time that is already set is kept. Only the seeder sets one, to
+                    // give demo history its real dates; no request DTO carries this field.
+                    if (entry.Entity.CreatedAtUtc == default)
+                    {
+                        entry.Entity.CreatedAtUtc = now;
+                    }
+
+                    entry.Entity.CreatedByUserId ??= userId;
                     break;
 
                 case EntityState.Modified:

@@ -83,6 +83,7 @@ public sealed class ExceptionHandlingMiddleware
         ForbiddenException => StatusCodes.Status403Forbidden,
         NotFoundException => StatusCodes.Status404NotFound,
         ConflictException => StatusCodes.Status409Conflict,
+        ExternalServiceException => StatusCodes.Status502BadGateway,
         _ => StatusCodes.Status422UnprocessableEntity,
     };
 

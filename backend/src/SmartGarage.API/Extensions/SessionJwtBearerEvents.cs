@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using SmartGarage.API.Hubs;
 using SmartGarage.Application.Services;
 using SmartGarage.Domain.Constants;
 
@@ -20,6 +21,20 @@ public sealed class SessionJwtBearerEvents : JwtBearerEvents
     public SessionJwtBearerEvents(ISessionService sessions)
     {
         _sessions = sessions;
+    }
+
+    // A browser or mobile WebSocket cannot set an Authorization header, so SignalR sends the
+    // token in the query string. It is accepted there for the hub path only: on any other
+    // route a token in the URL would end up in logs and history.
+    public override Task MessageReceived(MessageReceivedContext context)
+    {
+        if (context.HttpContext.Request.Path.StartsWithSegments(NotificationHub.Path, StringComparison.Ordinal)
+            && context.Request.Query.TryGetValue("access_token", out var token))
+        {
+            context.Token = token;
+        }
+
+        return Task.CompletedTask;
     }
 
     public override async Task TokenValidated(TokenValidatedContext context)

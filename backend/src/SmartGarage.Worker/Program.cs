@@ -1,6 +1,7 @@
 using System.Globalization;
 using Serilog;
 using Serilog.Events;
+using SmartGarage.Application;
 using SmartGarage.Infrastructure;
 using SmartGarage.Infrastructure.Configuration;
 using SmartGarage.Worker.Extensions;
@@ -45,7 +46,11 @@ builder.Services.AddSerilog((services, configuration) => configuration
 // Worker koristi istu infrastrukturu, ali bez prijavljenog korisnika: on obraduje
 // poruke, ne HTTP zahtjeve. Migracije NE pokrece - to radi iskljucivo API.
 builder.Services.AddInfrastructureForWorker(builder.Configuration);
-builder.Services.AddWorkerServices();
+
+// Isti servisni sloj kao u API-ju: zakazani zadaci prolaze kroz ista pravila kao
+// i covjek koji bi tu radnju uradio rucno (npr. state machine pri otkazivanju).
+builder.Services.AddApplication(builder.Configuration);
+builder.Services.AddWorkerServices(builder.Configuration);
 
 var host = builder.Build();
 

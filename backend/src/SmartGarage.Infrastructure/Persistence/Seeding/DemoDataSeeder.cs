@@ -31,6 +31,10 @@ public sealed class DemoDataSeeder
     private readonly ILogger<DemoDataSeeder> _logger;
     private readonly SeedRandom _random = new(RandomSeed);
 
+    // The latest reminder per vehicle and service, so an older one can be closed when the
+    // same service is done again.
+    private readonly Dictionary<(int VehicleId, int ServiceId), ServiceReminder> _openReminders = [];
+
     public DemoDataSeeder(
         SmartGarageDbContext db,
         IConfiguration configuration,
@@ -197,7 +201,7 @@ public sealed class DemoDataSeeder
                     CustomerNotes = _random.Next(0, 3) == 0
                         ? "Vozilo pravi buku pri kočenju na manjim brzinama."
                         : null,
-                    CreatedAtUtc = start.AddDays(-_random.Next(1, 10)),
+                    CreatedAtUtc = BookedAt(start, nowUtc),
                 };
 
                 AssignStatus(appointment, dayOffset, vehicle, adminId, nowUtc);
@@ -247,6 +251,19 @@ public sealed class DemoDataSeeder
                 await _db.SaveChangesAsync(ct);
             }
         }
+    }
+
+    /// <summary>
+    /// When the appointment was booked: a few days before it takes place, and never in the
+    /// future. An upcoming appointment was necessarily booked before today, and early enough
+    /// that its confirmation yesterday still comes after it.
+    /// </summary>
+    private DateTime BookedAt(DateTime start, DateTime nowUtc)
+    {
+        var beforeStart = start.AddDays(-_random.Next(1, 10));
+        var latestPossible = nowUtc.AddDays(-2).AddHours(-_random.Next(1, 48));
+
+        return beforeStart < latestPossible ? beforeStart : latestPossible;
     }
 
     /// <summary>
@@ -584,7 +601,15 @@ public sealed class DemoDataSeeder
                 ? (appointment.MileageAtAppointmentKm ?? vehicle.CurrentMileageKm) + km
                 : (int?)null;
 
-            _db.ServiceReminders.Add(new ServiceReminder
+            // Doing a service again answers the reminder the previous time left behind, exactly
+            // as completing an appointment does at runtime. Without this every past service
+            // would leave an open reminder and a vehicle would be "due" dozens of times over.
+            if (_openReminders.TryGetValue((appointment.VehicleId, service.Id), out var previous))
+            {
+                previous.Status = ServiceReminderStatus.Fulfilled;
+            }
+
+            var reminder = new ServiceReminder
             {
                 VehicleId = appointment.VehicleId,
                 ServiceId = service.Id,
@@ -596,7 +621,10 @@ public sealed class DemoDataSeeder
                 GeneratedFromAppointmentId = appointment.Id,
                 SentAtUtc = dueDate is not null && dueDate < DateTime.UtcNow ? dueDate : null,
                 CreatedAtUtc = appointment.CompletedAtUtc!.Value,
-            });
+            };
+
+            _openReminders[(appointment.VehicleId, service.Id)] = reminder;
+            _db.ServiceReminders.Add(reminder);
         }
     }
 

@@ -1,3 +1,4 @@
+using System.Data;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using SmartGarage.Application.Abstractions;
@@ -66,6 +67,14 @@ public class SmartGarageDbContext
 
     public Task<T> ExecuteInTransactionAsync<T>(
         Func<CancellationToken, Task<T>> operation,
+        CancellationToken cancellationToken = default) =>
+        ExecuteInTransactionAsync(operation, IsolationLevel.ReadCommitted, cancellationToken);
+
+    public void DiscardChanges() => ChangeTracker.Clear();
+
+    public Task<T> ExecuteInTransactionAsync<T>(
+        Func<CancellationToken, Task<T>> operation,
+        IsolationLevel isolationLevel,
         CancellationToken cancellationToken = default)
     {
         // The retrying execution strategy refuses a transaction it did not start itself,
@@ -76,7 +85,7 @@ public class SmartGarageDbContext
         return strategy.ExecuteAsync(
             async token =>
             {
-                await using var transaction = await Database.BeginTransactionAsync(token);
+                await using var transaction = await Database.BeginTransactionAsync(isolationLevel, token);
 
                 // An exception leaves the transaction uncommitted, and disposing it rolls back.
                 var result = await operation(token);

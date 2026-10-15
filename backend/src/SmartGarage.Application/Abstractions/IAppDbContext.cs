@@ -1,3 +1,4 @@
+using System.Data;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using SmartGarage.Domain.Entities;
@@ -43,7 +44,22 @@ public interface IAppDbContext
         Func<CancellationToken, Task<T>> operation,
         CancellationToken cancellationToken = default);
 
-    /// <inheritdoc cref="ExecuteInTransactionAsync{T}"/>
+    /// <summary>
+    /// The same, at a chosen isolation level. Booking uses <see cref="IsolationLevel.Serializable"/>
+    /// so that two requests for the last free place cannot both read "free" and both insert.
+    /// </summary>
+    Task<T> ExecuteInTransactionAsync<T>(
+        Func<CancellationToken, Task<T>> operation,
+        IsolationLevel isolationLevel,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Forgets every tracked entity. An operation that may be retried calls this first, so a
+    /// second attempt does not save what the first one had already added.
+    /// </summary>
+    void DiscardChanges();
+
+    /// <inheritdoc cref="ExecuteInTransactionAsync{T}(Func{CancellationToken, Task{T}}, CancellationToken)"/>
     Task ExecuteInTransactionAsync(
         Func<CancellationToken, Task> operation,
         CancellationToken cancellationToken = default);

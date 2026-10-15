@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using SmartGarage.API.Consumers;
 using SmartGarage.Application.Abstractions;
 using SmartGarage.Infrastructure.Configuration;
 using SmartGarage.Infrastructure.Persistence;
@@ -37,6 +38,10 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         // already exists, so these two win over the file.
         Environment.SetEnvironmentVariable("DB_NAME", TestDatabaseName);
         Environment.SetEnvironmentVariable("SEED_DATA", "false");
+
+        // The test run shares a small machine with everything else on it; a database that is
+        // slow to wake up should make the run slower, not fail it.
+        Environment.SetEnvironmentVariable("DB_COMMAND_TIMEOUT_SECONDS", "180");
         Environment.SetEnvironmentVariable("UPLOADS_ROOT", _uploadsRoot);
 
         DotEnvLoader.Load(AppContext.BaseDirectory);
@@ -45,6 +50,8 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
     public TestClock Clock { get; } = new();
 
     public CapturingEventPublisher Events { get; } = new();
+
+    public FakeStripeGateway Stripe { get; } = new();
 
     public async Task InitializeAsync()
     {
@@ -82,6 +89,14 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 
             services.RemoveAll<IEventPublisher>();
             services.AddSingleton<IEventPublisher>(Events);
+
+            services.RemoveAll<IStripeGateway>();
+            services.AddSingleton<IStripeGateway>(Stripe);
+
+            // The consumer that feeds SignalR from RabbitMQ is left out, so the tests run
+            // without a broker. What it does with a message is tested by calling the notifier.
+            var fanout = services.Single(d => d.ImplementationType == typeof(RealtimeFanoutConsumer));
+            services.Remove(fanout);
         });
 
     private static async Task DropTestDatabaseAsync()
@@ -89,7 +104,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         var configuration = new ConfigurationBuilder().AddEnvironmentVariables().Build();
 
         var options = new DbContextOptionsBuilder<SmartGarageDbContext>()
-            .UseSqlServer(ConnectionStringBuilder.Build(configuration))
+            .UseSqlServer(ConnectionStringBuilder.Build(configuration), sql => sql.CommandTimeout(180))
             .Options;
 
         await using var db = new SmartGarageDbContext(options);

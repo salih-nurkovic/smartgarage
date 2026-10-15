@@ -7,6 +7,7 @@ using SmartGarage.Domain.Entities;
 using SmartGarage.Infrastructure.Email;
 using SmartGarage.Infrastructure.Identity;
 using SmartGarage.Infrastructure.Messaging;
+using SmartGarage.Infrastructure.Payments;
 using SmartGarage.Infrastructure.Persistence;
 using SmartGarage.Infrastructure.Persistence.Interceptors;
 using SmartGarage.Infrastructure.Persistence.Seeding;
@@ -34,11 +35,6 @@ public static class DependencyInjection
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentUserService, CurrentUserService>();
 
-        // Stateless and built around one signing key, so a single instance serves every request.
-        services.AddSingleton<IJwtTokenService, JwtTokenService>();
-
-        // Holds only two values read from configuration at construction, so one instance is enough.
-        services.AddSingleton<IImageStore, LocalImageStore>();
 
         return services.AddInfrastructureCore(configuration);
     }
@@ -103,6 +99,15 @@ public static class DependencyInjection
 
         services.AddMessaging(configuration);
 
+        // Registered for both hosts: the Worker runs the same service layer for its scheduled
+        // jobs, and the container is validated as a whole when it starts.
+        services.AddSingleton<IJwtTokenService, JwtTokenService>();
+        services.AddSingleton<IImageStore, LocalImageStore>();
+
+        // Outbound calls to Stripe go through a factory-made client, never a new HttpClient.
+        services.AddHttpClient(StripeGateway.HttpClientName);
+        services.AddSingleton<IStripeGateway, StripeGateway>();
+
         services.AddScoped<AuditingInterceptor>();
         services.AddScoped<SoftDeleteInterceptor>();
 
@@ -116,6 +121,9 @@ public static class DependencyInjection
                 sql =>
                 {
                     sql.MigrationsAssembly(typeof(SmartGarageDbContext).Assembly.FullName);
+
+                    // From .env, so a slow machine can be given more time without a code change.
+                    sql.CommandTimeout(configuration.GetValue("DB_COMMAND_TIMEOUT_SECONDS", 30));
 
                     // SQL Server in a container is not ready the instant it accepts a socket.
                     // Retrying here is what lets `docker compose up` succeed on a cold start

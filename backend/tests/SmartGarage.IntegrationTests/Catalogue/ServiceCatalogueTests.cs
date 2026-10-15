@@ -45,6 +45,14 @@ public sealed class ServiceCatalogueTests
         var byDuration = await GetPageAsync("/api/services?maxDurationMinutes=30&pageSize=100", customer.AccessToken);
         byDuration.Items.Should().OnlyContain(s => s.EstimatedDurationMinutes <= 30);
 
+        var tagged = all.Items.First(s => s.Tags.Count > 0);
+        var tagId = tagged.Tags[0].Id;
+
+        var byTag = await GetPageAsync($"/api/services?tagIds={tagId}&pageSize=100", customer.AccessToken);
+        byTag.Items.Should().Contain(s => s.Id == tagged.Id);
+        byTag.Items.Should().OnlyContain(s => s.Tags.Any(t => t.Id == tagId));
+        byTag.TotalCount.Should().BeLessThan(all.TotalCount);
+
         var byText = await GetPageAsync(
             $"/api/services?search={Uri.EscapeDataString(sample.Name)}", customer.AccessToken);
         byText.Items.Should().Contain(s => s.Id == sample.Id);

@@ -11,5 +11,12 @@ public static class Roles
     public const string Employee = "Employee";
     public const string Customer = "Customer";
 
+    /// <summary>
+    /// Not a role a person can hold: the name the Worker acts under when it changes something
+    /// on a schedule. It is deliberately absent from <see cref="All"/>, so it is never seeded and
+    /// can never be assigned to an account.
+    /// </summary>
+    public const string System = "System";
+
     public static readonly IReadOnlyList<string> All = [Administrator, Employee, Customer];
 }

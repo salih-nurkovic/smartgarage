@@ -53,21 +53,23 @@ public sealed class RabbitMqConnection : IAsyncDisposable
             MessageRouting.Queues.DeadLetter, MessageRouting.DeadLetterExchange, routingKey: string.Empty,
             cancellationToken: ct);
 
-        // A message this queue rejects without requeue goes to the dead-letter exchange
+        // A message a queue rejects without requeue goes to the dead-letter exchange
         // instead of being dropped.
         var deadLettering = new Dictionary<string, object?>
         {
             ["x-dead-letter-exchange"] = MessageRouting.DeadLetterExchange,
         };
 
-        await channel.QueueDeclareAsync(
-            MessageRouting.Queues.Email, durable: true, exclusive: false, autoDelete: false,
-            arguments: deadLettering, cancellationToken: ct);
-
-        foreach (var routingKey in MessageRouting.EmailBindings)
+        foreach (var (queue, routingKeys) in MessageRouting.Bindings)
         {
-            await channel.QueueBindAsync(
-                MessageRouting.Queues.Email, _options.Exchange, routingKey, cancellationToken: ct);
+            await channel.QueueDeclareAsync(
+                queue, durable: true, exclusive: false, autoDelete: false,
+                arguments: deadLettering, cancellationToken: ct);
+
+            foreach (var routingKey in routingKeys)
+            {
+                await channel.QueueBindAsync(queue, _options.Exchange, routingKey, cancellationToken: ct);
+            }
         }
     }
 

@@ -2,6 +2,7 @@ using System.Globalization;
 using Serilog;
 using Serilog.Events;
 using SmartGarage.API.Extensions;
+using SmartGarage.API.Hubs;
 using SmartGarage.API.Middleware;
 using SmartGarage.Application;
 using SmartGarage.Infrastructure;
@@ -78,6 +79,7 @@ app.UseAuthorization();
 // Svaki kontroler trazi prijavu, osim akcija koje su izricito [AllowAnonymous].
 // Zaboravljen atribut zato znaci zakljucan endpoint, a ne otvoren.
 app.MapControllers().RequireAuthorization();
+app.MapHub<NotificationHub>(NotificationHub.Path).RequireAuthorization();
 
 // Health endpoint-i: Docker Compose ih koristi u depends_on / healthcheck,
 // pa Worker ne krece prije nego API primijeni migracije.

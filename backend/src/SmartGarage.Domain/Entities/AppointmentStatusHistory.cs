@@ -20,7 +20,8 @@ public class AppointmentStatusHistory : BaseEntity
 
     public AppointmentStatus ToStatus { get; set; }
 
-    public int ChangedByUserId { get; set; }
+    /// <summary>Null when the system made the change on a schedule rather than a person.</summary>
+    public int? ChangedByUserId { get; set; }
     public DateTime ChangedAtUtc { get; set; }
 
     /// <summary>Mandatory for cancellations and reschedules; optional elsewhere.</summary>
@@ -30,5 +31,5 @@ public class AppointmentStatusHistory : BaseEntity
     public string ActorRole { get; set; } = string.Empty;
 
     public Appointment Appointment { get; set; } = null!;
-    public ApplicationUser ChangedByUser { get; set; } = null!;
+    public ApplicationUser? ChangedByUser { get; set; }
 }

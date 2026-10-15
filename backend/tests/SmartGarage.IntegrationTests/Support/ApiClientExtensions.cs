@@ -1,11 +1,19 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using SmartGarage.Application.Dtos.Auth;
 
 namespace SmartGarage.IntegrationTests.Support;
 
 public static class ApiClientExtensions
 {
+    /// <summary>The API writes enums as names, so the tests read them the same way.</summary>
+    public static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
+    {
+        Converters = { new JsonStringEnumConverter() },
+    };
+
     /// <summary>The password every seeded account has, as the instructions prescribe.</summary>
     public const string SeedPassword = "test";
 
@@ -82,7 +90,7 @@ public static class ApiClientExtensions
     }
 
     public static async Task<T> ReadAsync<T>(this HttpResponseMessage response) =>
-        (await response.Content.ReadFromJsonAsync<T>())!;
+        (await response.Content.ReadFromJsonAsync<T>(Json))!;
 
     public static Task<HttpResponseMessage> SendJsonAsync<T>(
         this HttpClient client,

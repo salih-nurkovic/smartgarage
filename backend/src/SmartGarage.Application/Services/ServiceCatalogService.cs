@@ -1,9 +1,12 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
+using SmartGarage.Application.Common;
 using SmartGarage.Application.Abstractions;
 using SmartGarage.Application.Dtos.Catalogue;
 using SmartGarage.Domain.Constants;
 using SmartGarage.Domain.Entities;
 using SmartGarage.Domain.Entities.Reference;
+using SmartGarage.Domain.Enums;
 using SmartGarage.Domain.Exceptions;
 
 namespace SmartGarage.Application.Services;
@@ -21,12 +24,24 @@ public sealed class ServiceCatalogService
 {
     private const string ImageFolder = "services";
 
+    // Only the first few results of a search say much about what the customer was looking for.
+    private const int SearchedSignalsPerSearch = 3;
+
     private readonly ICurrentUserService _currentUser;
     private readonly IImageStore _images;
+    private readonly IDateTimeProvider _clock;
+    private readonly IMemoryCache _cache;
 
-    public ServiceCatalogService(IAppDbContext db, ICurrentUserService currentUser, IImageStore images)
+    public ServiceCatalogService(
+        IAppDbContext db,
+        ICurrentUserService currentUser,
+        IImageStore images,
+        IDateTimeProvider clock,
+        IMemoryCache cache)
         : base(db)
     {
+        _clock = clock;
+        _cache = cache;
         _currentUser = currentUser;
         _images = images;
     }
@@ -42,6 +57,37 @@ public sealed class ServiceCatalogService
     // because they are the ones who switch them back on.
     protected override IQueryable<Service> Query =>
         IsStaff ? Db.Set<Service>() : Db.Set<Service>().Where(s => s.IsActive && s.Category.IsActive);
+
+    // A customer opening a service is a (weak) sign of interest the recommender learns from.
+    public override async Task<ServiceResponse> GetByIdAsync(int id, CancellationToken ct)
+    {
+        var service = await base.GetByIdAsync(id, ct);
+
+        if (_currentUser.IsInRole(Roles.Customer))
+        {
+            await RecordSignalsAsync([id], SignalType.Viewed, SignalWeights.Viewed, ct);
+        }
+
+        return service;
+    }
+
+    // What a customer searches for, through the services the search brought up, counts too:
+    // the instructions name search history as an input that must really be recorded.
+    public override async Task<PagedResult<ServiceResponse>> GetAsync(ServiceSearchRequest search, CancellationToken ct)
+    {
+        var page = await base.GetAsync(search, ct);
+
+        if (_currentUser.IsInRole(Roles.Customer) && !string.IsNullOrWhiteSpace(search.Search))
+        {
+            await RecordSignalsAsync(
+                page.Items.Take(SearchedSignalsPerSearch).Select(s => s.Id).ToList(),
+                SignalType.Searched,
+                SignalWeights.Searched,
+                ct);
+        }
+
+        return page;
+    }
 
     public async Task<FileDownload> GetImageAsync(int id, CancellationToken ct)
     {
@@ -153,6 +199,28 @@ public sealed class ServiceCatalogService
                 .Select(l => new NamedItem(l.EngineTypeId, l.EngineType.Name))
                 .ToList(),
         });
+
+    protected override void OnChanged() => _cache.Remove(CacheKeys.RecommenderCatalog);
+
+    private async Task RecordSignalsAsync(IReadOnlyList<int> serviceIds, SignalType type, double weight, CancellationToken ct)
+    {
+        var userId = _currentUser.RequireUserId();
+        var now = _clock.UtcNow;
+
+        foreach (var serviceId in serviceIds)
+        {
+            Db.Set<UserServiceSignal>().Add(new UserServiceSignal
+            {
+                UserId = userId,
+                ServiceId = serviceId,
+                SignalType = type,
+                Weight = weight,
+                OccurredAtUtc = now,
+            });
+        }
+
+        await Db.SaveChangesAsync(ct);
+    }
 
     protected override IQueryable<Service> ForUpdate(IQueryable<Service> query) =>
         query.Include(s => s.TagLinks).Include(s => s.EngineTypeLinks);

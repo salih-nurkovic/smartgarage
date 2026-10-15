@@ -27,7 +27,12 @@ public abstract class ReferenceService<TEntity, TResponse, TSearch, TRequest>
         _cache = cache;
     }
 
-    protected override void OnChanged() => _cache.Remove(CacheKeys.Lookup);
+    // The recommender's catalogue vectors are built from categories and tags too.
+    protected override void OnChanged()
+    {
+        _cache.Remove(CacheKeys.Lookup);
+        _cache.Remove(CacheKeys.RecommenderCatalog);
+    }
 
     protected static ValidationException Taken(string field, string message) => new(field, message);
 }
