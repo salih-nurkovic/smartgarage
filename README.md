@@ -5,7 +5,7 @@ Informacioni sistem za digitalizaciju zakazivanja i upravljanja servisnim usluga
 **Student:** Salih Nurković, **IB220014**
 **Predmet:** Razvoj softvera II — Fakultet informacijskih tehnologija, Univerzitet „Džemal Bijedić" u Mostaru
 
-> **Status:** Faza 1 od 15 (struktura rješenja i setup projekta). Ovaj README se dopunjava sa svakom fazom.
+> **Status:** REST API, Worker, sistem preporuka i mobilna aplikacija su završeni. Desktop aplikacija, PDF izvještaji i kompletan Docker setup su u izradi.
 
 ---
 
@@ -96,6 +96,12 @@ Zatim u `.env` popuni:
 
 `.env` je u `.gitignore` i **ne postavlja se u GitHub Release**. Za predaju se umjesto njega prilaže `.env-tajne.zip` zaštićen šifrom, a šifra se predaje na DL sistem.
 
+### Valuta
+
+Cijene se čuvaju, prikazuju i naplaćuju u **EUR**, pa je iznos koji kupac vidi tačno iznos koji Stripe naplati. Mockup-i u prijavi prikazuju KM, ali Stripe ne naplaćuje u BAM. Oznaka valute uz cijene dolazi iz `DISPLAY_CURRENCY`.
+
+Naziv, adresa i telefon servisa (`GARAGE_NAME`, `GARAGE_ADDRESS`, `GARAGE_PHONE`) prikazuju se u detaljima rezervacije.
+
 ### Zašto nema HTTPS-a
 
 API namjerno radi preko običnog HTTP-a. Upute (sekcija 9.2) to preporučuju jer self-signed certifikati mogu isteći ili biti nevalidni u trenutku pregleda rada. `UseHttpsRedirection()` se nigdje ne poziva.
@@ -145,7 +151,7 @@ Baza se zove **`220014`** — broj indeksa bez prefiksa `IB`, kako traže upute 
 Pristup je Code First. Migracije se primjenjuju automatski pri pokretanju API-ja; Worker čeka da API postane zdrav, pa migracije nikada ne idu paralelno.
 
 ```bash
-# Ručno, ako zatreba (dolazi u Fazi 2):
+# Ručno, ako zatreba:
 dotnet ef database update --project backend/src/SmartGarage.Infrastructure --startup-project backend/src/SmartGarage.API
 ```
 
@@ -153,9 +159,9 @@ dotnet ef database update --project backend/src/SmartGarage.Infrastructure --sta
 
 ## Mobilna aplikacija
 
-> Dolazi u Fazi 10.
+Flutter aplikacija za kupce (Android), u folderu `mobile/smartgarage_mobile`. Prijava nalogom `mobile` / `test`.
 
-Adresa API-ja za Android emulator je `10.0.2.2`:
+Adresa API-ja čita se preko `String.fromEnvironment('API_BASE_URL')`. Podrazumijevana vrijednost je `http://10.0.2.2:5000`, adresa računara viđena iz Android emulatora, pa APK radi i bez dodatnih parametara:
 
 ```bash
 cd mobile/smartgarage_mobile
@@ -167,6 +173,37 @@ Release build:
 ```bash
 flutter clean
 flutter build apk --release
+```
+
+### Šta aplikacija pokriva
+
+| Dio | Ekrani |
+|---|---|
+| Nalog | Prijava, registracija (uvijek kao kupac), reset lozinke kodom iz e-maila, profil sa slikom, promjena lozinke, odjava (sesija se poništava i na serveru) |
+| Vozila | Lista sa kilometražom, zadnjim i sljedećim servisom; dodavanje i uređivanje (marka → model iz baze); brisanje vozila bez rezervacija |
+| Usluge | Katalog sa pretragom, filterima (kategorija, cijena, trajanje) i sortiranjem; detalji usluge sa ocjenama |
+| Zakazivanje | Četiri koraka kao u prijavi: vozilo → usluge → datum i termin (puni sati 08:00–16:00, slobodna mjesta sa servera) → potvrda |
+| Rezervacije | **Master-detail forma**: historija sa brojačima i filterom statusa → detalji (usluge, termin, mehaničar, plaćanje, historija statusa); otkazivanje sa razlogom i promjena termina |
+| Plaćanje | Stripe PaymentSheet unutar aplikacije, nakon završenog servisa; status „Plaćeno" postavlja isključivo server; pregled plaćanja i povrata |
+| Recenzije | Prosjek i raspodjela 5★–1★, nova recenzija za završen servis, brisanje vlastite |
+| Obavijesti | Stižu uživo preko SignalR-a (uz periodičnu provjeru kad veza nije dostupna); označi pročitano, označi sve, obriši |
+| Preporuke | Po vozilu, sa hitnošću i objašnjenjem; „Zakaži" i „Obavljeno" |
+
+### Odstupanje od mockup-a
+
+Mockup `mobile-11` prikazuje vlastitu formu za broj kartice. Upute (7.1) traže in-app Stripe SDK / PaymentSheet, a vlastita forma bi aplikaciju uvela u PCI opseg, pa se koristi Stripe PaymentSheet. Donja navigacija ima pet tabova (Početna · Servisi · Zakaži · Historija · Profil), a plaćanja i recenzije se otvaraju iz detalja rezervacije i profila.
+
+### Testovi
+
+```bash
+flutter analyze
+flutter test
+```
+
+Ugovorni test poziva pokrenut API sa seed podacima kroz iste repozitorije koje koristi aplikacija. Mijenja podatke (kreira i otkazuje rezervaciju, dodaje i briše vozilo), pa se pokreće samo izričito:
+
+```bash
+flutter test test/e2e --dart-define=E2E=true --dart-define=API_BASE_URL=http://localhost:5000
 ```
 
 ---
@@ -193,7 +230,7 @@ flutter build windows --release
 
 ## Test korisnici
 
-> Nalozi se kreiraju seederom u Fazi 2. Prijava ide **korisničkim imenom**, ne e-mailom.
+> Nalozi se kreiraju seederom pri prvom pokretanju API-ja. Prijava ide **korisničkim imenom**, ne e-mailom.
 
 | Kontekst | Korisničko ime | Lozinka |
 |---|---|---|
@@ -240,7 +277,7 @@ stripe listen --forward-to http://localhost:5000/api/webhooks/stripe
 
 Komanda ispisuje `whsec_...` vrijednost koja ide u `STRIPE_WEBHOOK_SECRET`.
 
-Ako CLI nije pokrenut, plaćanje i dalje radi ispravno: `PaymentReconciliationJob` u Worker-u svakih 15 minuta provjerava zaglavljena plaćanja direktno kod Stripe-a, a `GET /api/payments/{id}/status` radi istu provjeru na zahtjev. Potvrda plaćanja je u svakom slučaju serverska.
+Ako CLI nije pokrenut, plaćanje i dalje radi ispravno: mobilna aplikacija nakon PaymentSheet-a poziva `GET /api/payments/{id}`, koji status provjerava direktno kod Stripe-a, a `PaymentReconciliationJob` u Worker-u svakih 15 minuta provjerava zaglavljena plaćanja. Potvrda plaćanja je u svakom slučaju serverska.
 
 Test kartice:
 
@@ -256,6 +293,4 @@ Test kartice:
 
 | Datoteka | Sadržaj |
 |---|---|
-| `docs/SmartGarage-Architecture-Plan.md` | Kompletna tehnička arhitektura i plan implementacije |
-| `docs/SmartGarage-Revision-1.1-Uskladjivanje.md` | Usklađivanje sa prihvaćenom prijavom i zvaničnim uputama |
-| `recommender-dokumentacija.md` | Dokumentacija sistema preporuka (Faza 9) |
+| `recommender-dokumentacija.md` | Sistem preporuka: ulazni signali, vektori, bodovanje, objašnjenja, konfiguracija |

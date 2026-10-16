@@ -83,6 +83,19 @@ public static class DependencyInjection
         services.AddOptions<PaymentOptions>()
             .Configure(options => options.StripeCurrency = configuration["STRIPE_CURRENCY"] ?? "eur");
 
+        services.AddOptions<GarageOptions>()
+            .Configure(options =>
+            {
+                options.Name = configuration["GARAGE_NAME"] ?? string.Empty;
+                options.Address = configuration["GARAGE_ADDRESS"] ?? string.Empty;
+                options.Phone = configuration["GARAGE_PHONE"] ?? string.Empty;
+                options.DisplayCurrency = configuration["DISPLAY_CURRENCY"] ?? "EUR";
+            })
+            .Validate(
+                o => !string.IsNullOrWhiteSpace(o.Name) && !string.IsNullOrWhiteSpace(o.Address),
+                "GARAGE_NAME and GARAGE_ADDRESS must be set.")
+            .ValidateOnStart();
+
         services.AddOptions<RecommenderOptions>()
             .Configure(options =>
             {

@@ -153,6 +153,10 @@ public sealed class ReferenceDataTests
         before.EngineTypes.Should().NotBeEmpty();
         before.ServiceCategories.Should().NotBeEmpty();
         before.ServiceTags.Should().NotBeEmpty();
+        before.Garage.Name.Should().NotBeNullOrWhiteSpace();
+        before.Garage.Address.Should().NotBeNullOrWhiteSpace();
+        before.Garage.Currency.Should().NotBeNullOrWhiteSpace();
+        before.Garage.BookingMaxDaysAhead.Should().BePositive();
 
         var brandName = $"Lookup {Guid.NewGuid():N}"[..20];
         await _client.SendJsonAsync(
