@@ -210,9 +210,9 @@ flutter test test/e2e --dart-define=E2E=true --dart-define=API_BASE_URL=http://l
 
 ## Desktop aplikacija
 
-> Dolazi u Fazi 11.
+Flutter Windows aplikacija za osoblje, u folderu `desktop/smartgarage_desktop`. Prijava nalogom `desktop` / `test` (ili `admin`, odnosno `employee` za zaposlenika). Kupci se ne mogu prijaviti.
 
-Adresa API-ja za Windows je `localhost`:
+Podrazumijevana adresa API-ja je `http://localhost:5000`:
 
 ```bash
 cd desktop/smartgarage_desktop
@@ -225,6 +225,25 @@ Release build:
 flutter clean
 flutter build windows --release
 ```
+
+Za build sa pluginima Windows traži uključen **Developer Mode** (Postavke → Za programere).
+
+| Ekran | Administrator | Zaposlenik |
+|---|---|---|
+| Dashboard: KPI sa promjenom u odnosu na prošli mjesec, prihod po mjesecima, raspodjela usluga, nadolazeće rezervacije | ✓ | ✓ bez prihoda |
+| Rezervacije: brojači, pretraga, filter statusa i perioda, detalji sa potvrdom, dodjelom mehaničara, pomjeranjem, početkom, završetkom i otkazivanjem uz razlog | ✓ | ✓ bez dodjele |
+| Usluge: kartice, dodavanje i uređivanje sa slikom, oznakama i tipovima motora | ✓ | |
+| Zaposlenici: kartice, dodavanje, uređivanje, radno vrijeme, deaktivacija | ✓ | |
+| Korisnici: pretraga, uloge, aktivacija i deaktivacija uz razlog, nova lozinka bez stare | ✓ | |
+| Plaćanja: prihod, transakcije, povrat novca do stvarno naplaćenog iznosa | ✓ | |
+| Recenzije: sakrivanje i ponovno prikazivanje | ✓ | |
+| Šifarnici: kategorije, oznake, marke, modeli, tipovi motora | ✓ | |
+| Log grešaka sa stack traceom | ✓ | |
+| Obavijesti uživo, moj profil i promjena lozinke | ✓ | ✓ |
+
+Nedostupne akcije ostaju vidljive, ali onemogućene, uz objašnjenje zašto (npr. brisanje usluge koja je na rezervacijama). Rezervacije i plaćanja prikazuju broj (`APP-…`, `PAY-…`), nikad ID iz baze.
+
+Testovi su isti kao kod mobilne aplikacije: `flutter analyze`, `flutter test` i ugovorni test uz `--dart-define=E2E=true`.
 
 ---
 

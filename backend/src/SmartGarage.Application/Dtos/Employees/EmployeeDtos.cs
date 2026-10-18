@@ -18,6 +18,9 @@ public sealed class EmployeeResponse
 {
     public int Id { get; init; }
 
+    /// <summary>The employee's account, for activating or deactivating it through /api/users.</summary>
+    public int UserId { get; init; }
+
     public string UserName { get; init; } = string.Empty;
 
     public string FirstName { get; init; } = string.Empty;

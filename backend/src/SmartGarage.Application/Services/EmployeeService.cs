@@ -266,6 +266,7 @@ public sealed class EmployeeService : IEmployeeService
         return query.Select(e => new EmployeeResponse
         {
             Id = e.Id,
+            UserId = e.UserId,
             UserName = e.User.UserName!,
             FirstName = e.User.FirstName,
             LastName = e.User.LastName,

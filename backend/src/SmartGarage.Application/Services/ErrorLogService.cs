@@ -1,5 +1,9 @@
+using Microsoft.EntityFrameworkCore;
 using SmartGarage.Application.Abstractions;
+using SmartGarage.Application.Common;
+using SmartGarage.Application.Dtos.ErrorLogs;
 using SmartGarage.Domain.Entities;
+using SmartGarage.Domain.Exceptions;
 
 namespace SmartGarage.Application.Services;
 
@@ -20,6 +24,10 @@ public sealed record ErrorLogEntry(
 public interface IErrorLogService
 {
     Task RecordAsync(ErrorLogEntry entry, CancellationToken ct);
+
+    Task<PagedResult<ErrorLogListItemResponse>> GetAsync(ErrorLogSearchRequest search, CancellationToken ct);
+
+    Task<ErrorLogDetailResponse> GetByIdAsync(long id, CancellationToken ct);
 }
 
 public sealed class ErrorLogService : IErrorLogService
@@ -58,6 +66,87 @@ public sealed class ErrorLogService : IErrorLogService
 
         await _db.SaveChangesAsync(ct);
     }
+
+    public async Task<PagedResult<ErrorLogListItemResponse>> GetAsync(ErrorLogSearchRequest search, CancellationToken ct)
+    {
+        var query = _db.ErrorLogs.AsNoTracking();
+
+        if (!string.IsNullOrWhiteSpace(search.Source))
+        {
+            query = query.Where(e => e.Source == search.Source);
+        }
+
+        if (search.From is { } from)
+        {
+            query = query.Where(e => e.OccurredAtUtc >= from);
+        }
+
+        if (search.To is { } to)
+        {
+            query = query.Where(e => e.OccurredAtUtc <= to);
+        }
+
+        if (!string.IsNullOrWhiteSpace(search.Search))
+        {
+            var term = search.Search.Trim();
+
+            // Translated to SQL LIKE; how text compares is the column collation's business.
+#pragma warning disable CA1307
+            query = query.Where(e =>
+                e.CorrelationId.Contains(term)
+                || e.Message.Contains(term)
+                || (e.ExceptionType != null && e.ExceptionType.Contains(term))
+                || (e.RequestPath != null && e.RequestPath.Contains(term)));
+#pragma warning restore CA1307
+        }
+
+        var totalCount = await query.CountAsync(ct);
+
+        var items = await query
+            .OrderByDescending(e => e.OccurredAtUtc)
+            .ThenByDescending(e => e.Id)
+            .Skip(search.Skip)
+            .Take(search.ClampedPageSize)
+            .Select(e => new ErrorLogListItemResponse
+            {
+                Id = e.Id,
+                CorrelationId = e.CorrelationId,
+                Source = e.Source,
+                Level = e.Level,
+                Message = e.Message,
+                ExceptionType = e.ExceptionType,
+                HttpMethod = e.HttpMethod,
+                RequestPath = e.RequestPath,
+                StatusCode = e.StatusCode,
+                UserName = e.User == null ? null : e.User.UserName,
+                OccurredAtUtc = e.OccurredAtUtc,
+            })
+            .ToListAsync(ct);
+
+        return new PagedResult<ErrorLogListItemResponse>(items, search.ClampedPage, search.ClampedPageSize, totalCount);
+    }
+
+    public async Task<ErrorLogDetailResponse> GetByIdAsync(long id, CancellationToken ct) =>
+        await _db.ErrorLogs
+            .AsNoTracking()
+            .Where(e => e.Id == id)
+            .Select(e => new ErrorLogDetailResponse
+            {
+                Id = e.Id,
+                CorrelationId = e.CorrelationId,
+                Source = e.Source,
+                Level = e.Level,
+                Message = e.Message,
+                ExceptionType = e.ExceptionType,
+                HttpMethod = e.HttpMethod,
+                RequestPath = e.RequestPath,
+                StatusCode = e.StatusCode,
+                UserName = e.User == null ? null : e.User.UserName,
+                OccurredAtUtc = e.OccurredAtUtc,
+                StackTrace = e.StackTrace,
+            })
+            .SingleOrDefaultAsync(ct)
+        ?? throw new NotFoundException("Zapis greške nije pronađen.");
 
     private static string? Truncate(string? value, int maxLength) =>
         value is null || value.Length <= maxLength ? value : value[..maxLength];

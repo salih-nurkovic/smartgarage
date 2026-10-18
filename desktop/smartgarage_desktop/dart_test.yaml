@@ -1,0 +1,3 @@
+tags:
+  # Runs against a live API and changes its data; see test/e2e/api_contract_test.dart.
+  e2e:
