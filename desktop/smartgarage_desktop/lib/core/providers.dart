@@ -24,6 +24,7 @@ final reviewRepositoryProvider = Provider((ref) => ReviewRepository(ref.watch(ap
 final referenceRepositoryProvider = Provider((ref) => ReferenceRepository(ref.watch(apiClientProvider)));
 final notificationRepositoryProvider = Provider((ref) => NotificationRepository(ref.watch(apiClientProvider)));
 final errorLogRepositoryProvider = Provider((ref) => ErrorLogRepository(ref.watch(apiClientProvider)));
+final reportRepositoryProvider = Provider((ref) => ReportRepository(ref.watch(apiClientProvider)));
 
 /// The signed-in staff member, or null. Restores the saved session at start-up.
 final authProvider = AsyncNotifierProvider<AuthController, User?>(AuthController.new);

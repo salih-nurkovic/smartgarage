@@ -2,6 +2,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using SmartGarage.Application.Common;
 using SmartGarage.Application.Dtos.Auth;
 
 namespace SmartGarage.IntegrationTests.Support;
@@ -89,8 +90,12 @@ public static class ApiClientExtensions
             new HttpRequestMessage(HttpMethod.Post, url) { Content = form }.WithBearer(accessToken));
     }
 
+    /// <summary>Reads a successful response; on any other status fails with the body, which says why.</summary>
     public static async Task<T> ReadAsync<T>(this HttpResponseMessage response) =>
-        (await response.Content.ReadFromJsonAsync<T>(Json))!;
+        response.IsSuccessStatusCode || typeof(T) == typeof(ApiErrorResponse)
+            ? (await response.Content.ReadFromJsonAsync<T>(Json))!
+            : throw new HttpRequestException(
+                $"{(int)response.StatusCode} {response.RequestMessage?.RequestUri?.PathAndQuery}: {await response.Content.ReadAsStringAsync()}");
 
     public static Task<HttpResponseMessage> SendJsonAsync<T>(
         this HttpClient client,

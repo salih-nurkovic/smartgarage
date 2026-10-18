@@ -11,6 +11,7 @@ class StatCard extends StatelessWidget {
     this.color = AppColors.accent,
     this.valueColor = AppColors.textPrimary,
     this.changePercent,
+    this.changeMeaning = 'U odnosu na isti period prošlog mjeseca',
     super.key,
   });
 
@@ -20,6 +21,9 @@ class StatCard extends StatelessWidget {
   final Color color;
   final Color valueColor;
   final double? changePercent;
+
+  /// What the change is measured against, shown on hover.
+  final String changeMeaning;
 
   @override
   Widget build(BuildContext context) {
@@ -47,7 +51,7 @@ class StatCard extends StatelessWidget {
                   const Spacer(),
                   if (change != null)
                     Tooltip(
-                      message: 'U odnosu na isti period prošlog mjeseca',
+                      message: changeMeaning,
                       child: Text(
                         '${change >= 0 ? '+' : ''}${change.toStringAsFixed(1)}%',
                         style: TextStyle(

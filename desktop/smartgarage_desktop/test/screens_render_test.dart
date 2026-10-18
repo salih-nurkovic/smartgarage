@@ -64,6 +64,7 @@ void main() {
     ('/users', 'Korisnici'),
     ('/payments', 'Upravljanje plaćanjima'),
     ('/reviews', 'Haris M.'),
+    ('/reports', 'Prihodi i rezervacije'),
     ('/reference', 'Šifarnici'),
     ('/error-log', 'Log grešaka'),
     ('/notifications', 'Nova rezervacija'),
@@ -81,7 +82,7 @@ void main() {
     final router = await start(tester, admin: false);
 
     expect(find.text('Rezervacije'), findsWidgets);
-    for (final hidden in ['Zaposlenici', 'Korisnici', 'Plaćanja', 'Log grešaka']) {
+    for (final hidden in ['Zaposlenici', 'Korisnici', 'Plaćanja', 'Izvještaji', 'Log grešaka']) {
       expect(find.text(hidden), findsNothing, reason: '$hidden is for administrators');
     }
 
@@ -120,5 +121,22 @@ void main() {
       find.byWidgetPredicate((w) => w is Tooltip && (w.message ?? '').contains('245 rezervacija')),
       findsOneWidget,
     );
+  });
+
+  testWidgets('reports show the figures, both tables and collapse small slices of the chart', (tester) async {
+    final router = await start(tester);
+    router.go('/reports');
+    await tester.pumpAndSettle();
+
+    expect(find.text('Stopa zadovoljstva'), findsOneWidget);
+    expect(find.text('81%'), findsOneWidget, reason: '4,05 of 5');
+    expect(find.text('Ostalo'), findsOneWidget, reason: 'six categories become four and the rest');
+    expect(find.text('PAY-2026-000455'), findsOneWidget);
+
+    await tester.tap(find.text('Rezervacije').last);
+    await tester.pumpAndSettle();
+    expect(find.text('Amina Kovačević'), findsOneWidget);
+    expect(find.text('Klijent je otkazao termin zbog spriječenosti.'), findsOneWidget);
+    expect(find.text('PAY-2026-000455'), findsNothing);
   });
 }

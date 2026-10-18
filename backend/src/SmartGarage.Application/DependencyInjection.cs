@@ -147,6 +147,7 @@ public static class DependencyInjection
         services.AddScoped<IPaymentService, PaymentService>();
         services.AddScoped<IRecommendationService, RecommendationService>();
         services.AddScoped<IDashboardService, DashboardService>();
+        services.AddScoped<IReportService, ReportService>();
 
         // The reference tables share one controller shape, so each is registered under the
         // generic contract that controller asks for.

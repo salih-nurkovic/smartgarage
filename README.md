@@ -5,7 +5,7 @@ Informacioni sistem za digitalizaciju zakazivanja i upravljanja servisnim usluga
 **Student:** Salih Nurković, **IB220014**
 **Predmet:** Razvoj softvera II — Fakultet informacijskih tehnologija, Univerzitet „Džemal Bijedić" u Mostaru
 
-> **Status:** REST API, Worker, sistem preporuka i mobilna aplikacija su završeni. Desktop aplikacija, PDF izvještaji i kompletan Docker setup su u izradi.
+> **Status:** REST API, Worker, sistem preporuka, mobilna i desktop aplikacija i PDF izvještaji su završeni. Kompletan Docker setup je u izradi.
 
 ---
 
@@ -237,11 +237,27 @@ Za build sa pluginima Windows traži uključen **Developer Mode** (Postavke → 
 | Korisnici: pretraga, uloge, aktivacija i deaktivacija uz razlog, nova lozinka bez stare | ✓ | |
 | Plaćanja: prihod, transakcije, povrat novca do stvarno naplaćenog iznosa | ✓ | |
 | Recenzije: sakrivanje i ponovno prikazivanje | ✓ | |
+| Izvještaji: period, KPI sa promjenom prema prethodnom periodu iste dužine, prihodi i rezervacije po periodu, distribucija usluga, tabele; izvoz u PDF i ispis | ✓ | |
 | Šifarnici: kategorije, oznake, marke, modeli, tipovi motora | ✓ | |
 | Log grešaka sa stack traceom | ✓ | |
 | Obavijesti uživo, moj profil i promjena lozinke | ✓ | ✓ |
 
 Nedostupne akcije ostaju vidljive, ali onemogućene, uz objašnjenje zašto (npr. brisanje usluge koja je na rezervacijama). Rezervacije i plaćanja prikazuju broj (`APP-…`, `PAY-…`), nikad ID iz baze.
+
+### Izvještaji
+
+Dva izvještaja, samo za administratora. Ekran i PDF koriste iste brojke sa servera:
+
+| Izvještaj | Podaci (`GET`) | PDF (`GET`) | Sadržaj |
+|---|---|---|---|
+| Prihodi | `/api/reports/revenue?from=&to=` | `/api/reports/revenue/pdf` | bruto, povrati, neto, broj uplata, prosječna uplata; po danu ili mjesecu; po kategoriji sa udjelom; 15 najprofitabilnijih usluga; povrati sa razlogom i ko ih je zatražio |
+| Rezervacije | `/api/reports/appointments?from=&to=&status=&employeeId=` | `/api/reports/appointments/pdf` | ukupno, završeno, otkazano, stopa završenosti, prosječno trajanje, cijena i ocjena; po statusu, zaposleniku i kategoriji; razlozi otkazivanja; spisak rezervacija (najnovijih 500) |
+
+- Prihod je ono što je Stripe naplatio, po datumu plaćanja, minus izvršeni povrati po datumu povrata. Isto pravilo koriste dashboard i plaćanja.
+- Bez datuma izvještaj obuhvata tekući mjesec. Raspon je najviše dvije godine; do 62 dana grupiše se po danu, duže po mjesecu.
+- Svaka brojka se poredi sa prethodnim periodom iste dužine.
+- PDF je A4 (izvještaj o rezervacijama položen) i ima zaglavlje sa periodom, vremenom izrade i autorom, ukupne zbirove i numerisane stranice.
+- Na desktopu „Izvezi izvještaj" čuva PDF, a „Ispiši" otvara sistemski dijalog za štampu.
 
 Testovi su isti kao kod mobilne aplikacije: `flutter analyze`, `flutter test` i ugovorni test uz `--dart-define=E2E=true`.
 

@@ -8,6 +8,7 @@ import 'package:smartgarage_desktop/core/api/api_exception.dart';
 import 'package:smartgarage_desktop/core/api/token_storage.dart';
 import 'package:smartgarage_desktop/data/models/appointment.dart';
 import 'package:smartgarage_desktop/data/models/common.dart';
+import 'package:smartgarage_desktop/data/models/report.dart';
 import 'package:smartgarage_desktop/data/repositories.dart';
 
 /// Runs the application's own repositories against a running API with the seeded data, so every
@@ -125,6 +126,30 @@ void main() {
         PaymentRepository(employee).summary(),
         throwsA(isA<ApiException>().having((e) => e.statusCode, 'status', 403)),
       );
+      await expectLater(
+        ReportRepository(employee).revenue(ReportRange(DateTime.utc(2026, 9), DateTime.utc(2026, 9, 30))),
+        throwsA(isA<ApiException>().having((e) => e.statusCode, 'status', 403)),
+      );
+    });
+
+    test('both reports read as figures and download as PDF documents', () async {
+      final reports = ReportRepository(admin);
+      final range = ReportRange(DateTime.utc(2026, 5), DateTime.utc(2026, 9, 30));
+
+      final revenue = await reports.revenue(range);
+      expect(revenue.byPeriod, hasLength(5));
+      expect(
+        revenue.byPeriod.fold<double>(0, (sum, p) => sum + p.revenue),
+        closeTo(revenue.netRevenue.value, 0.01),
+      );
+
+      final appointments = await reports.appointments(range);
+      expect(appointments.byStatus.fold<int>(0, (sum, s) => sum + s.count), appointments.total.value);
+
+      for (final kind in ReportKind.values) {
+        final pdf = await reports.pdf(kind, range);
+        expect(String.fromCharCodes(pdf.take(5)), '%PDF-');
+      }
     });
 
     test('a reference row is added, changed and deleted', () async {

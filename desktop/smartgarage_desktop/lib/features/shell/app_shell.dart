@@ -28,6 +28,7 @@ const navItems = [
   NavItem('/users', 'Korisnici', Icons.people_outline, adminOnly: true),
   NavItem('/payments', 'Plaćanja', Icons.payments_outlined, adminOnly: true),
   NavItem('/reviews', 'Recenzije', Icons.reviews_outlined, adminOnly: true),
+  NavItem('/reports', 'Izvještaji', Icons.bar_chart_outlined, adminOnly: true),
   NavItem('/reference', 'Šifarnici', Icons.list_alt_outlined, adminOnly: true),
   NavItem('/error-log', 'Log grešaka', Icons.bug_report_outlined, adminOnly: true),
   NavItem('/notifications', 'Obavijesti', Icons.notifications_outlined),

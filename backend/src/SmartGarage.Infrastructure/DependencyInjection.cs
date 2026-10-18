@@ -11,6 +11,7 @@ using SmartGarage.Infrastructure.Payments;
 using SmartGarage.Infrastructure.Persistence;
 using SmartGarage.Infrastructure.Persistence.Interceptors;
 using SmartGarage.Infrastructure.Persistence.Seeding;
+using SmartGarage.Infrastructure.Reporting;
 using SmartGarage.Infrastructure.Storage;
 
 namespace SmartGarage.Infrastructure;
@@ -35,6 +36,8 @@ public static class DependencyInjection
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentUserService, CurrentUserService>();
 
+        // Only the API prints reports.
+        services.AddSingleton<IReportPdfRenderer, QuestPdfReportRenderer>();
 
         return services.AddInfrastructureCore(configuration);
     }

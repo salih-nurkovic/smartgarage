@@ -53,8 +53,12 @@ class ApiClient {
 
   Future<void> delete(String path) => _send(() => _dio.delete<dynamic>(path), (_) {});
 
-  Future<Uint8List> bytes(String path) => _send(
-    () => _dio.get<List<int>>(path, options: Options(responseType: ResponseType.bytes)),
+  Future<Uint8List> bytes(String path, {Map<String, dynamic>? query}) => _send(
+    () => _dio.get<List<int>>(
+      path,
+      queryParameters: _clean(query),
+      options: Options(responseType: ResponseType.bytes),
+    ),
     (data) => Uint8List.fromList(data as List<int>),
   );
 

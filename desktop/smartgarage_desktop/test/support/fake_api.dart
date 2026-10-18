@@ -105,6 +105,64 @@ Object? _respond(String path) => switch (path) {
       {'name': 'Ostalo', 'count': 5, 'percent': 5.0},
     ],
   },
+  '/api/reports/revenue' => {
+    'from': '2026-05-01',
+    'to': '2026-10-18',
+    'grossRevenue': {'value': 28800.0, 'changePercent': -8.1},
+    'refundedAmount': 2742.5,
+    'netRevenue': {'value': 26057.5, 'changePercent': -13.9},
+    'paymentCount': 152,
+    'averageTransaction': {'value': 189.47, 'changePercent': null},
+    'byPeriod': [
+      for (var m = 5; m <= 10; m++) {'label': '${m.toString().padLeft(2, '0')}/2026', 'revenue': 3000.0 + m * 400, 'appointments': 30 + m},
+    ],
+    'byCategory': [
+      {'name': 'Motor', 'count': 44, 'amount': 10410.0, 'percent': 36.1},
+      {'name': 'Kočnice', 'count': 48, 'amount': 3915.0, 'percent': 13.6},
+    ],
+    'topServices': [
+      {'name': 'Zamjena zupčastog kaiša', 'count': 7, 'amount': 2450.0, 'percent': 8.5},
+    ],
+    'refunds': [
+      {
+        'paymentNumber': 'PAY-2026-000455',
+        'completedAtUtc': '2026-09-25T16:15:00',
+        'amount': 185.0,
+        'reason': 'Usluga nije izvršena u dogovorenom obimu, odobren puni povrat.',
+        'requestedBy': 'Salih Nurković',
+      },
+    ],
+  },
+  '/api/reports/appointments' => {
+    'from': '2026-05-01',
+    'to': '2026-10-18',
+    'total': {'value': 228, 'changePercent': 3.3},
+    'completed': 160,
+    'cancelled': 41,
+    'completionRate': 79.6,
+    'averageDurationMinutes': 196,
+    'averagePrice': {'value': 197.55, 'changePercent': 2.5},
+    'averageRating': {'value': 4.05, 'changePercent': -1.7},
+    'byPeriod': [
+      for (var m = 5; m <= 10; m++) {'label': '${m.toString().padLeft(2, '0')}/2026', 'revenue': 0.0, 'appointments': 30 + m},
+    ],
+    'byStatus': [
+      {'status': 'Confirmed', 'count': 27},
+      {'status': 'Completed', 'count': 160},
+      {'status': 'Cancelled', 'count': 41},
+    ],
+    'byCategory': [
+      for (final (i, name) in ['Motor', 'Kočnice', 'Gume', 'Klima', 'Elektrika', 'Karoserija'].indexed)
+        {'name': name, 'count': 60 - i * 8, 'amount': 1000.0, 'percent': 100 / 6},
+    ],
+    'byEmployee': [
+      {'name': 'Amina Kovačević', 'total': 90, 'completed': 60, 'completionRate': 76.9},
+    ],
+    'cancellationReasons': [
+      {'reason': 'Klijent je otkazao termin zbog spriječenosti.', 'count': 21},
+    ],
+    'appointments': <Object>[],
+  },
   '/api/appointments/summary' => {
     'total': 89,
     'pending': 12,
@@ -312,7 +370,8 @@ class FakeApi extends ApiClient {
       parse(_respond(path));
 
   @override
-  Future<Uint8List> bytes(String path) async => throw ApiException('Slike nisu dio testa.');
+  Future<Uint8List> bytes(String path, {Map<String, dynamic>? query}) async =>
+      throw ApiException('Datoteke nisu dio testa.');
 }
 
 class FakeAdministrator extends AuthController {

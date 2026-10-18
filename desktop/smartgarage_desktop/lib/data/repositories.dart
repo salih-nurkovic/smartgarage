@@ -10,6 +10,7 @@ import 'models/employee.dart';
 import 'models/lookup.dart';
 import 'models/notification.dart';
 import 'models/reference.dart';
+import 'models/report.dart';
 import 'models/service.dart';
 import 'models/user.dart';
 
@@ -335,4 +336,20 @@ class ErrorLogRepository {
   );
 
   Future<ErrorLogItem> get(int id) => _api.get('/api/error-logs/$id', ErrorLogItem.fromJson);
+}
+
+/// The administrator's two reports: the figures for the screen, and the same figures as a PDF.
+class ReportRepository {
+  const ReportRepository(this._api);
+
+  final ApiClient _api;
+
+  Future<RevenueReport> revenue(ReportRange range) =>
+      _api.get('/api/reports/revenue', RevenueReport.fromJson, query: range.query);
+
+  Future<AppointmentReport> appointments(ReportRange range) =>
+      _api.get('/api/reports/appointments', AppointmentReport.fromJson, query: range.query);
+
+  Future<Uint8List> pdf(ReportKind kind, ReportRange range) =>
+      _api.bytes('/api/reports/${kind.path}/pdf', query: range.query);
 }

@@ -16,6 +16,7 @@ import '../features/notifications/notifications_screen.dart';
 import '../features/payments/payments_screen.dart';
 import '../features/profile/profile_screen.dart';
 import '../features/reference/reference_screen.dart';
+import '../features/reports/reports_screen.dart';
 import '../features/reviews/reviews_screen.dart';
 import '../features/services/services_screen.dart';
 import '../features/shell/app_shell.dart';
@@ -79,6 +80,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: '/payments', builder: (_, _) => const PaymentsScreen()),
           GoRoute(path: '/reviews', builder: (_, _) => const ReviewsScreen()),
           GoRoute(path: '/reference', builder: (_, _) => const ReferenceScreen()),
+          GoRoute(path: '/reports', builder: (_, _) => const ReportsScreen()),
           GoRoute(path: '/error-log', builder: (_, _) => const ErrorLogScreen()),
           GoRoute(path: '/notifications', builder: (_, _) => const NotificationsScreen()),
           GoRoute(path: '/profile', builder: (_, _) => const ProfileScreen()),

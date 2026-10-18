@@ -20,6 +20,7 @@ dependencies:
   go_router: ^18.1.0
   intl: ^0.20.3
   signalr_netcore: ^1.4.4
+  printing: ^5.15.1
 
 dev_dependencies:
   flutter_test:
