@@ -40,8 +40,12 @@ public sealed class FakeStripeGateway : IStripeGateway
         return Task.FromResult(_intents[id]);
     }
 
+    private readonly ConcurrentDictionary<string, bool> _unreachable = new();
+
     public Task<StripeIntent> GetPaymentIntentAsync(string paymentIntentId, CancellationToken ct) =>
-        Task.FromResult(_intents[paymentIntentId]);
+        _unreachable.TryRemove(paymentIntentId, out _)
+            ? throw new HttpRequestException("Stripe is not reachable.")
+            : Task.FromResult(_intents[paymentIntentId]);
 
     public Task<StripeRefundResult> CreateRefundAsync(
         string paymentIntentId,
@@ -87,6 +91,9 @@ public sealed class FakeStripeGateway : IStripeGateway
             Status = "requires_payment_method",
             FailureMessage = message,
         };
+
+    /// <summary>The next question about this intent fails, as when the network drops.</summary>
+    public void FailNextLookup(string paymentIntentId) => _unreachable[paymentIntentId] = true;
 
     public static string EventFor(string eventId, string type, string paymentIntentId) =>
         JsonSerializer.Serialize(new

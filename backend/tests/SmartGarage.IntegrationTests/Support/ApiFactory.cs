@@ -53,6 +53,8 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 
     public FakeStripeGateway Stripe { get; } = new();
 
+    public QueryCounter Queries { get; } = new();
+
     public async Task InitializeAsync()
     {
         await DropTestDatabaseAsync();
@@ -92,6 +94,8 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 
             services.RemoveAll<IStripeGateway>();
             services.AddSingleton<IStripeGateway>(Stripe);
+
+            services.ConfigureDbContext<SmartGarageDbContext>((_, options) => options.AddInterceptors(Queries));
 
             // The consumer that feeds SignalR from RabbitMQ is left out, so the tests run
             // without a broker. What it does with a message is tested by calling the notifier.

@@ -13,18 +13,20 @@ using SmartGarage.Infrastructure.Persistence.Seeding;
 //  SmartGarage REST API
 //  Student: Salih Nurkovic, IB220014
 //
-//  Ovdje se samo sklapa host. Svaki sloj se registruje kroz JEDNU extension
-//  metodu, tako da nikada ne nastane duplirana registracija (upute, sekcija 3.4).
+//  Only the host is assembled here. Each layer registers itself through ONE
+//  extension method, so nothing can be registered twice (instructions, 3.4).
 // ---------------------------------------------------------------------------
 
-// .env se ucitava prije svega ostalog: on je jedini izvor konfiguracije.
+const int LogFilesKept = 7;
+
+// .env is loaded before anything else: it is the only source of configuration.
 var envFile = DotEnvLoader.Load(AppContext.BaseDirectory);
 
 var builder = WebApplication.CreateBuilder(args);
 
-// --- Logiranje -------------------------------------------------------------
-// ILogger<T> svuda u kodu; Serilog je samo implementacija iza njega.
-// Dovoljno informacija za reprodukciju problema (upute, sekcija 3.2).
+// --- Logging ---------------------------------------------------------------
+// The code depends on ILogger<T> only; Serilog is the implementation behind it.
+// Enough context to reproduce a problem (instructions, 3.2).
 builder.Host.UseSerilog((context, services, configuration) => configuration
     .MinimumLevel.Is(ParseLogLevel(context.Configuration["LOG_LEVEL"]))
     .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
@@ -40,13 +42,13 @@ builder.Host.UseSerilog((context, services, configuration) => configuration
         path: Path.Combine(AppContext.BaseDirectory, "logs", "smartgarage-api-.log"),
         formatProvider: CultureInfo.InvariantCulture,
         rollingInterval: RollingInterval.Day,
-        retainedFileCountLimit: 7,
+        retainedFileCountLimit: LogFilesKept,
         outputTemplate:
             "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj} {Properties:j}{NewLine}{Exception}"));
 
-// --- Servisi ---------------------------------------------------------------
-// Tri poziva, po jedan za svaki sloj. Sve registracije zive u tim extension
-// metodama i nigdje drugdje, pa se nista ne moze registrovati dvaput.
+// --- Services --------------------------------------------------------------
+// One call per layer. Every registration lives in these extension methods and
+// nowhere else.
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddApplication(builder.Configuration);
 builder.Services.AddApiServices(builder.Configuration);
@@ -56,45 +58,45 @@ var app = builder.Build();
 // --- Pipeline --------------------------------------------------------------
 app.UseSerilogRequestLogging();
 
-// Prvi u nizu, da uhvati izuzetak iz bilo kojeg dijela pipeline-a iza sebe.
+// First, so that it catches an exception from any part of the pipeline after it.
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
-// NAMJERNO nema UseHttpsRedirection(): upute (9.2) preporucuju http pristup API-ju
-// jer self-signed certifikati mogu isteci ili biti nevalidni tokom pregleda rada.
+// Deliberately no UseHttpsRedirection(): the instructions (9.2) recommend plain HTTP,
+// because a self-signed certificate may expire or be rejected while the work is graded.
 
 var swaggerEnabled = builder.Configuration.GetValue("ENABLE_SWAGGER", false);
 if (swaggerEnabled)
 {
     app.UseSwagger();
-    // Uneseni token ostaje zapamcen i nakon osvjezavanja stranice.
+    // A token entered once survives a page reload.
     app.UseSwaggerUI(options => options.EnablePersistAuthorization());
 }
 
-// NAMJERNO nema UseStaticFiles(): slike se citaju iskljucivo kroz endpointe koji
-// provjeravaju prijavu i vlasnistvo (upute, sekcija 5), nikada direktno sa diska.
+// Deliberately no UseStaticFiles(): images are read only through endpoints that check
+// sign-in and ownership (instructions, 5), never straight from disk.
 app.UseCors(ServiceCollectionExtensions.CorsPolicyName);
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Svaki kontroler trazi prijavu, osim akcija koje su izricito [AllowAnonymous].
-// Zaboravljen atribut zato znaci zakljucan endpoint, a ne otvoren.
+// Every controller requires sign-in unless an action is explicitly [AllowAnonymous],
+// so a forgotten attribute leaves an endpoint locked rather than open.
 app.MapControllers().RequireAuthorization();
 app.MapHub<NotificationHub>(NotificationHub.Path).RequireAuthorization();
 
-// Health endpoint-i: Docker Compose ih koristi u depends_on / healthcheck,
-// pa Worker ne krece prije nego API primijeni migracije.
+// Docker Compose uses these in its healthcheck, so the Worker does not start before
+// the API has applied the migrations.
 app.MapHealthChecks("/health").AllowAnonymous();
 app.MapHealthChecks("/health/ready").AllowAnonymous();
 
-// Migracije i seed podaci. API je jedini koji ovo radi; Worker ceka da API
-// postane zdrav, pa dva procesa nikada ne migriraju istu bazu istovremeno.
+// Migrations and seed data. Only the API does this; the Worker waits for the API to be
+// healthy, so two processes never migrate the same database at once.
 await DatabaseInitializer.InitializeAsync(app.Services);
 
 var startupLogger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Startup");
 startupLogger.LogInformation(
-    "SmartGarage API pokrenut. Okruzenje={Environment}, .env={EnvFile}, Swagger={Swagger}",
+    "SmartGarage API started. Environment={Environment}, .env={EnvFile}, Swagger={Swagger}",
     app.Environment.EnvironmentName,
-    envFile ?? "nije pronaden",
+    envFile ?? "not found",
     swaggerEnabled);
 
 await app.RunAsync();

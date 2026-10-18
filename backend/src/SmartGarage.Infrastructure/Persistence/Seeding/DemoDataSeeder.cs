@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using SmartGarage.Domain.Constants;
 using SmartGarage.Domain.Entities;
 using SmartGarage.Domain.Enums;
 
@@ -370,7 +371,7 @@ public sealed class DemoDataSeeder
                 ChangedByUserId = from is null ? appointment.CustomerId : adminId,
                 ChangedAtUtc = at,
                 Reason = reason,
-                ActorRole = from is null ? "Customer" : "Administrator",
+                ActorRole = from is null ? Roles.Customer : Roles.Administrator,
             });
 
         Add(null, AppointmentStatus.Pending, appointment.CreatedAtUtc);

@@ -7,19 +7,19 @@ using SmartGarage.Infrastructure.Configuration;
 using SmartGarage.Worker.Extensions;
 
 // ---------------------------------------------------------------------------
-//  SmartGarage Worker  -  pomocni mikroservis
+//  SmartGarage Worker - the supporting microservice
 //  Student: Salih Nurkovic, IB220014
 //
-//  Ovo je ZASEBAN projekat, zaseban Dockerfile, zaseban kontejner i zaseban
-//  proces. Upute (3.2) izricito navode da BackgroundService unutar API projekta
-//  NE zadovoljava uslov dva odvojena servisa.
+//  A SEPARATE project, Dockerfile, container and process. The instructions (3.2)
+//  say outright that a BackgroundService inside the API does not count as a
+//  second service.
 //
-//  Worker komunicira sa API-jem iskljucivo preko RabbitMQ-a. Nema HTTP povrsinu
-//  osim health porta.
-//
-//  Consumeri se registruju kroz AddWorkerServices(); Quartz zadaci dolaze sa
-//  fazama koje ih trebaju.
+//  The Worker talks to the API only through RabbitMQ and has no HTTP surface
+//  besides its health port. Consumers and Quartz jobs are registered in
+//  AddWorkerServices().
 // ---------------------------------------------------------------------------
+
+const int LogFilesKept = 7;
 
 var envFile = DotEnvLoader.Load(AppContext.BaseDirectory);
 
@@ -39,16 +39,16 @@ builder.Services.AddSerilog((services, configuration) => configuration
         path: Path.Combine(AppContext.BaseDirectory, "logs", "smartgarage-worker-.log"),
         formatProvider: CultureInfo.InvariantCulture,
         rollingInterval: RollingInterval.Day,
-        retainedFileCountLimit: 7,
+        retainedFileCountLimit: LogFilesKept,
         outputTemplate:
             "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj} {Properties:j}{NewLine}{Exception}"));
 
-// Worker koristi istu infrastrukturu, ali bez prijavljenog korisnika: on obraduje
-// poruke, ne HTTP zahtjeve. Migracije NE pokrece - to radi iskljucivo API.
+// The same infrastructure, but with no signed-in user: the Worker handles messages, not
+// HTTP requests. It never runs migrations - only the API does.
 builder.Services.AddInfrastructureForWorker(builder.Configuration);
 
-// Isti servisni sloj kao u API-ju: zakazani zadaci prolaze kroz ista pravila kao
-// i covjek koji bi tu radnju uradio rucno (npr. state machine pri otkazivanju).
+// The same service layer as the API: a scheduled job goes through the same rules as a
+// person doing the same thing by hand (the state machine when cancelling, for one).
 builder.Services.AddApplication(builder.Configuration);
 builder.Services.AddWorkerServices(builder.Configuration);
 
@@ -56,9 +56,9 @@ var host = builder.Build();
 
 var logger = host.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Startup");
 logger.LogInformation(
-    "SmartGarage Worker pokrenut. Okruzenje={Environment}, .env={EnvFile}",
+    "SmartGarage Worker started. Environment={Environment}, .env={EnvFile}",
     builder.Environment.EnvironmentName,
-    envFile ?? "nije pronaden");
+    envFile ?? "not found");
 
 await host.RunAsync();
 

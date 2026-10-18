@@ -56,8 +56,8 @@ Nije `BackgroundService` unutar API-ja, što upute (sekcija 3.2) izričito ne pr
 | `SmartGarage.Infrastructure` | `DbContext`, EF konfiguracije, migracije, seeder, Stripe, SMTP, RabbitMQ, PDF. |
 | `SmartGarage.API` | Kontroleri, middleware, SignalR hub, DI kompozicija. |
 | `SmartGarage.Worker` | RabbitMQ consumeri i Quartz zakazani poslovi. |
-| `SmartGarage.UnitTests` | State machine, preporuke, validatori, obračun cijena. |
-| `SmartGarage.IntegrationTests` | Autentifikacija, CRUD, konkurentnost rezervacija, idempotentnost plaćanja. |
+| `SmartGarage.UnitTests` | State machine, slobodni termini i kapacitet, radno vrijeme, preporuke, validatori. |
+| `SmartGarage.IntegrationTests` | Autentifikacija, CRUD, konkurentnost rezervacija, idempotentnost plaćanja, izvještaji, broj SQL upita po listi. |
 
 Kontroleri referenciraju **isključivo** interfejse iz `Application` sloja. `DbContext` im nije ni u vidnom polju, pa pravilo „kontroler → servis → DbContext" nije stvar discipline nego strukture.
 
@@ -154,6 +154,18 @@ Pristup je Code First. Migracije se primjenjuju automatski pri pokretanju API-ja
 # Ručno, ako zatreba:
 dotnet ef database update --project backend/src/SmartGarage.Infrastructure --startup-project backend/src/SmartGarage.API
 ```
+
+### Testovi
+
+```bash
+dotnet test
+```
+
+- **Unit testovi** ne trebaju ništa osim .NET SDK-a.
+- **Integracioni testovi** pokreću pravi API nad pravim SQL Serverom iz `.env`, ali u zasebnoj bazi `220014_tests`. Ta baza se briše i pravi iz migracija pri svakom pokretanju, a razvojna baza `220014` se ne dira.
+- RabbitMQ, SMTP i Stripe su zamijenjeni lažnim implementacijama, pa testovi rade bez Dockera i bez mreže.
+
+InMemory provider se namjerno ne koristi: ne provjerava transakcije ni unique indekse, a na njima počivaju zakazivanje i idempotentnost plaćanja.
 
 ---
 

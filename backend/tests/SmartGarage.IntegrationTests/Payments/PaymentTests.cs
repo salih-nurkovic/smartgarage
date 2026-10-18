@@ -120,6 +120,39 @@ public sealed class PaymentTests
     }
 
     [Fact]
+    public async Task Webhook_ThatFailsHalfway_IsProcessedWhenStripeDeliversItAgain()
+    {
+        var (token, vehicle, serviceId) = await NewCustomerAsync();
+        var completed = await _client.BookAndCompleteAsync(_factory, token, vehicle, TestData.Slot(20, 9), serviceId);
+        var intent = await (await IntentAsync(token, completed.Id)).ReadAsync<PaymentIntentResponse>();
+        var intentId = await IntentIdAsync(intent.PaymentId);
+
+        _factory.Stripe.Succeed(intentId);
+        _factory.Stripe.FailNextLookup(intentId);
+        var eventId = $"evt_{Guid.NewGuid():N}";
+        var payload = FakeStripeGateway.EventFor(eventId, "payment_intent.succeeded", intentId);
+
+        (await PostWebhookAsync(payload, FakeStripeGateway.ValidSignature)).StatusCode
+            .Should().Be(HttpStatusCode.InternalServerError, "Stripe retries only deliveries that did not succeed");
+
+        await using (var scope = _factory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<SmartGarageDbContext>();
+            (await db.PaymentEvents.AnyAsync(e => e.StripeEventId == eventId)).Should().BeFalse();
+            (await db.Payments.SingleAsync(p => p.Id == intent.PaymentId)).Status.Should().Be(PaymentStatus.Created);
+        }
+
+        (await PostWebhookAsync(payload, FakeStripeGateway.ValidSignature)).StatusCode.Should().Be(HttpStatusCode.OK);
+
+        await using (var scope = _factory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<SmartGarageDbContext>();
+            (await db.PaymentEvents.SingleAsync(e => e.StripeEventId == eventId)).ProcessedAtUtc.Should().NotBeNull();
+            (await db.Payments.SingleAsync(p => p.Id == intent.PaymentId)).Status.Should().Be(PaymentStatus.Succeeded);
+        }
+    }
+
+    [Fact]
     public async Task DeclinedCard_LeavesTheAppointmentUnpaid_AndANewAttemptStartsAFreshPayment()
     {
         var (token, vehicle, serviceId) = await NewCustomerAsync();

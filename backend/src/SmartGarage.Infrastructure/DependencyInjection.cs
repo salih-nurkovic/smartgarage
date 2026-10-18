@@ -26,6 +26,9 @@ namespace SmartGarage.Infrastructure;
 /// </summary>
 public static class DependencyInjection
 {
+    private const int DatabaseRetryCount = 5;
+    private static readonly TimeSpan DatabaseMaxRetryDelay = TimeSpan.FromSeconds(10);
+
     /// <summary>
     /// Registers persistence and Identity for the API, where there is a signed-in user.
     /// </summary>
@@ -132,8 +135,8 @@ public static class DependencyInjection
                     // Retrying here is what lets `docker compose up` succeed on a cold start
                     // without anyone having to run it twice.
                     sql.EnableRetryOnFailure(
-                        maxRetryCount: 5,
-                        maxRetryDelay: TimeSpan.FromSeconds(10),
+                        maxRetryCount: DatabaseRetryCount,
+                        maxRetryDelay: DatabaseMaxRetryDelay,
                         errorNumbersToAdd: null);
                 });
 
@@ -175,8 +178,10 @@ public static class DependencyInjection
                 options.Password.RequireNonAlphanumeric =
                     configuration.GetValue("PASSWORD_REQUIRE_NONALPHANUMERIC", true);
 
-                options.Lockout.MaxFailedAccessAttempts = 10;
-                options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+                options.Lockout.MaxFailedAccessAttempts =
+                    configuration.GetValue("LOCKOUT_MAX_FAILED_ATTEMPTS", 10);
+                options.Lockout.DefaultLockoutTimeSpan =
+                    TimeSpan.FromMinutes(configuration.GetValue("LOCKOUT_MINUTES", 15));
             })
             .AddRoles<ApplicationRole>()
             .AddEntityFrameworkStores<SmartGarageDbContext>()

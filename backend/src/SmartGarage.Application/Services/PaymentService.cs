@@ -391,40 +391,53 @@ public sealed class PaymentService : IPaymentService
             return;
         }
 
-        var payment = stripeEvent.PaymentIntentId is null
-            ? null
-            : await _db.Set<Payment>().SingleOrDefaultAsync(p => p.StripePaymentIntentId == stripeEvent.PaymentIntentId, ct);
-
-        if (payment is null)
+        // The claim above is committed on its own: it is what makes a second delivery a no-op,
+        // and it has to be visible to that delivery. If the work after it fails, the claim is
+        // withdrawn, so Stripe's retry of the same event does the work instead of being ignored.
+        try
         {
-            paymentEvent.ProcessingResult = "No payment in this system matches the event.";
-        }
-        else if (stripeEvent.RefundId is not null)
-        {
-            var refund = await _db.Set<Refund>().SingleOrDefaultAsync(r => r.StripeRefundId == stripeEvent.RefundId, ct);
+            var payment = stripeEvent.PaymentIntentId is null
+                ? null
+                : await _db.Set<Payment>().SingleOrDefaultAsync(p => p.StripePaymentIntentId == stripeEvent.PaymentIntentId, ct);
 
-            if (refund is not null && stripeEvent.RefundStatus is not null)
+            if (payment is null)
             {
-                refund.Status = ToRefundStatus(stripeEvent.RefundStatus);
-                refund.CompletedAtUtc ??= refund.Status == RefundStatus.Succeeded ? _clock.UtcNow : null;
+                paymentEvent.ProcessingResult = "No payment in this system matches the event.";
+            }
+            else if (stripeEvent.RefundId is not null)
+            {
+                var refund = await _db.Set<Refund>().SingleOrDefaultAsync(r => r.StripeRefundId == stripeEvent.RefundId, ct);
+
+                if (refund is not null && stripeEvent.RefundStatus is not null)
+                {
+                    refund.Status = ToRefundStatus(stripeEvent.RefundStatus);
+                    refund.CompletedAtUtc ??= refund.Status == RefundStatus.Succeeded ? _clock.UtcNow : null;
+                }
+
+                paymentEvent.PaymentId = payment.Id;
+                paymentEvent.ProcessingResult = "Refund updated.";
+            }
+            else
+            {
+                // The event says something changed; what it changed to is asked of Stripe directly,
+                // so an event that arrives late or out of order cannot move a payment backwards.
+                var intent = await _stripe.GetPaymentIntentAsync(payment.StripePaymentIntentId, ct);
+                await ApplyAsync(payment, intent, ct);
+
+                paymentEvent.PaymentId = payment.Id;
+                paymentEvent.ProcessingResult = $"Payment is {payment.Status}.";
             }
 
-            paymentEvent.PaymentId = payment.Id;
-            paymentEvent.ProcessingResult = "Refund updated.";
+            paymentEvent.ProcessedAtUtc = _clock.UtcNow;
+            await _db.SaveChangesAsync(ct);
         }
-        else
+        catch
         {
-            // The event says something changed; what it changed to is asked of Stripe directly,
-            // so an event that arrives late or out of order cannot move a payment backwards.
-            var intent = await _stripe.GetPaymentIntentAsync(payment.StripePaymentIntentId, ct);
-            await ApplyAsync(payment, intent, ct);
-
-            paymentEvent.PaymentId = payment.Id;
-            paymentEvent.ProcessingResult = $"Payment is {payment.Status}.";
+            _db.DiscardChanges();
+            _db.Set<PaymentEvent>().Remove(paymentEvent);
+            await _db.SaveChangesAsync(CancellationToken.None);
+            throw;
         }
-
-        paymentEvent.ProcessedAtUtc = _clock.UtcNow;
-        await _db.SaveChangesAsync(ct);
     }
 
     public async Task<int> ReconcileStaleAsync(CancellationToken ct)
